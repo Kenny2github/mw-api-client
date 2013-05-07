@@ -2,13 +2,13 @@ A really simple MediaWiki API client for the Scratch Wiki.
 
 Can:
 
-  * read pages
-  * edit pages
-  * list pages in category
-  * list page backlinks ("what links here")
-  * list page transclusions
+* read pages
+* edit pages
+* list pages in category
+* list page backlinks ("what links here")
+* list page transclusions
 
-Requires the `requests` library.
+Requires the ``requests`` library.
 
 http://wiki.scratch.mit.edu/
 
@@ -24,7 +24,7 @@ Get a page::
 
     sandbox = wiki.page("User:Blob8108/Sandbox")
 
-Edit page:
+Edit page::
 
     # Get the page
     contents = sandbox.read()
