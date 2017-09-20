@@ -1,5 +1,5 @@
 """
-A really simple MediaWiki API client for the Scratch Wiki.
+A really simple MediaWiki API client.
 
 Can:
 
@@ -11,7 +11,7 @@ Can:
 
 Requires the `requests` library.
 
-http://wiki.scratch.mit.edu/
+http://www.mediawiki.org/
 
 
 Example Usage
@@ -19,11 +19,11 @@ Example Usage
 
 Get a page::
 
-    wiki = ScratchWiki()
+    wiki = Wiki()
 
-    wiki.login("blob8108", password)
+    wiki.login("kenny2wiki", password)
 
-    sandbox = wiki.page("User:Blob8108/Sandbox")
+    sandbox = wiki.page("User:Kenny2wiki/Sandbox")
 
 Edit page:
 
@@ -44,7 +44,7 @@ List pages in category::
 
 Remove all uses of a template::
 
-    target_pages = wiki.transclusions("Template:unreleased")
+    target_pages = wiki.transclusions("Template:Stub")
 
     # Sort by title because it's prettier that way
     target_pages.sort(key=lambda x: x.title)
@@ -53,10 +53,10 @@ Remove all uses of a template::
     target_pages = [p for p in target_pages if p.query_info()['ns'] == 0]
     
     for page in target_pages:
-        page.replace("{{unreleased}}", "")
+        page.replace("{{stub}}", "")
 
 
-Made by ~blob8108.
+Made by Kenny2github, based off of ~blob8108's Scratch Wiki MWAPI client.
 
 MIT Licensed.
 """
@@ -64,7 +64,6 @@ MIT Licensed.
 
 from urllib import urlencode
 import json
-
 import requests
 
 
@@ -157,14 +156,14 @@ class Page(object):
         return self.wiki.SITE_URL + urlencode({"x": self.title})[2:].replace("%2F", "/")
 
 
-class ScratchWiki(object):
-    URL = "http://wiki.scratch.mit.edu/"
-    SITE_URL = URL + "wiki/"
-    API_URL = URL + "w/api.php"
-    USER_AGENT = "PythonBot ~blob8108"
+class Wiki(object):
+    USER_AGENT = "PythonBot Kenny2github~~~~ ~blob8108"
     
-    def __init__(self):
+    def __init__(self, url, site_url, api_url):
         self.cookie = None
+        self.URL = url
+        self.SITE_URL = self.URL + site_url
+        self.API_URL = self.URL + api_url
       
     def request(self, _method="GET", _headers={}, _post=False, **params):
         #arguments = dict(filter(lambda (arg, value): value is not None, arguments.items()))
@@ -191,8 +190,8 @@ class ScratchWiki(object):
 
         self.cookie = r.headers.get("set-cookie", self.cookie)
     
-        if 'error' in r.json:
-            error = r.json['error']
+        if 'error' in r.json():
+            error = r.json()['error']
             error_code = error['code']
             if error_code in ERRORS:
                 error_cls = ERRORS[error_code]
@@ -200,7 +199,7 @@ class ScratchWiki(object):
                 raise WikiError(error)
             raise error_cls(error)
     
-        return r.json
+        return r.json()
     
     def post_request(self, **params):
         return self.request(_post=True, **params)
@@ -238,7 +237,7 @@ class ScratchWiki(object):
             return title
         return Page(self, title=title)
     
-    def category_members(self, title, limit=500):
+    def category_members(self, title, limit="max"):
         if not title.startswith("Category:"):
             title = "Category:" + title
         
@@ -259,7 +258,7 @@ class ScratchWiki(object):
             else:
                 break
 
-    def backlinks(self, page, limit=500):
+    def backlinks(self, page, limit="max"):
         page = self.page(page)
  
         start_from = None
@@ -279,7 +278,7 @@ class ScratchWiki(object):
             else:
                 break
 
-    def transclusions(self, template_page, limit=500):
+    def transclusions(self, template_page, limit="max"):
         page = self.page(template_page)
  
         start_from = None
