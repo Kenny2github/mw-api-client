@@ -5,7 +5,7 @@ with open('README.rst', 'r') as f:
 
 setup(
     name="mw-api-client",
-    version="0.0.0",
+    version="0.0.1",
     description="A simple MediaWiki client.",
     long_description=longdesc,
     url="https://github.com/Kenny2github/mw-api-client",
