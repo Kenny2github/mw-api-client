@@ -19,7 +19,7 @@ Example Usage
 
 Get a page::
 
-    wiki = Wiki()
+    wiki = Wiki("https://en.wikipedia.org/", "wiki/", "w/api.php")
 
     wiki.login("kenny2wiki", password)
 
