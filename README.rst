@@ -1,4 +1,4 @@
-A really simple MediaWiki API client for the Scratch Wiki.
+A really simple MediaWiki API client.
 
 Can:
 
@@ -10,7 +10,7 @@ Can:
 
 Requires the ``requests`` library.
 
-http://wiki.scratch.mit.edu/
+http://www.mediawiki.org/
 
 
 Example Usage
@@ -18,11 +18,11 @@ Example Usage
 
 Get a page::
 
-    wiki = ScratchWiki()
+    wiki = Wiki()
 
-    wiki.login("blob8108", password)
+    wiki.login("kenny2wiki", password)
 
-    sandbox = wiki.page("User:Blob8108/Sandbox")
+    sandbox = wiki.page("User:Kenny2wiki/Sandbox")
 
 Edit page::
 
@@ -43,7 +43,7 @@ List pages in category::
 
 Remove all uses of a template::
 
-    target_pages = wiki.transclusions("Template:unreleased")
+    target_pages = wiki.transclusions("Template:Stub")
 
     # Sort by title because it's prettier that way
     target_pages.sort(key=lambda x: x.title)
@@ -52,9 +52,9 @@ Remove all uses of a template::
     target_pages = [p for p in target_pages if p.query_info()['ns'] == 0]
     
     for page in target_pages:
-        page.replace("{{unreleased}}", "")
+        page.replace("{{stub}}", "")
 
 
-Made by ~blob8108.
+Made by Kenny2github, based on ~blob8108's MWAPI client for the Scratch Wiki.
 
 MIT Licensed.
