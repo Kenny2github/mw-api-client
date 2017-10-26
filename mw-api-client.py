@@ -83,79 +83,6 @@ ERRORS = {
     'permissiondenied': PermissionDenied,
 }
 
-
-
-class Page(object):
-    def __init__(self, wiki, **data):
-        self.wiki = wiki
-        self.title = None
-        self.__dict__.update(data)
-    
-    def __repr__(self):
-        return "<Page(%s)>" % repr(self.title)
-    
-    def __unicode__(self):
-        return self.title
-    
-    def query_info(self, **kwargs):
-        arguments = dict(
-            action = "query",
-            titles = self.title,
-        )
-        arguments.update(kwargs)
-        data = self.wiki.request(**arguments)
-        page_data = data["query"]["pages"].values()[0]
-        return page_data
-        
-    def read(self):
-        data = self.query_info(
-            prop = "revisions",
-            rvprop = "content",
-        )
-        return data["revisions"][0]["*"]
-        
-    def edit_token(self):
-        data = self.query_info(
-            prop = "info",
-            intoken = "edit",
-        )
-        return data["edittoken"]
-    
-    def edit(self, content, summary):
-        token = self.edit_token()
-        
-        return self.wiki.post_request(
-            action = "edit",
-            title = self.title,
-            token = token,
-            text = content.encode("utf-8"),
-            summary = summary,
-            bot = 1,
-            nocreate = 1,
-        )
-
-    def replace(self, old_text, new_text):
-        """Replace each occurence of old_text in the page's source with
-        new_text.
-
-        """
-
-        if old_text and new_text:
-            summary = "Replace %s with %s" % (old_text, new_text)
-        elif old_text:
-            summary = "Remove %s" % old_text
-        else:
-            raise ValueError, "Invalid arguments"
-        
-        content = self.read()
-        content = content.replace(old_text, new_text)
-        self.edit(content, summary)
-
-    @property
-    def url(self):
-        return self.wiki.SITE_URL + urlencode({"x": self.title})[2:].replace("%2F", "/")
-
-
 class Wiki(object):
     USER_AGENT = "PythonBot Kenny2github~~~~ ~blob8108"
     
@@ -165,7 +92,7 @@ class Wiki(object):
         self.SITE_URL = self.URL + site_url
         self.API_URL = self.URL + api_url
       
-    def request(self, _method="GET", _headers={}, _post=False, **params):
+    def request(self, _headers={}, _post=False, **params):
         #arguments = dict(filter(lambda (arg, value): value is not None, arguments.items()))
         params["format"] = "json"
         
@@ -176,10 +103,6 @@ class Wiki(object):
 
         if self.cookie:
             headers['Cookie'] = self.cookie
-
-        method = "GET"
-        if _post:
-            method = "POST"
 
         if _post:
             r = requests.post(self.API_URL, data=params, headers=headers)
@@ -258,25 +181,7 @@ class Wiki(object):
             else:
                 break
 
-    def backlinks(self, page, limit="max"):
-        page = self.page(page)
- 
-        start_from = None
-        while 1:
-            data = self.request(
-                action = "query",
-                list = "backlinks",
-                bllimit = limit,
-                bltitle = page.title,
-                blcontinue = start_from,
-            )
-            for page_data in data["query"]["backlinks"]:
-                yield Page(self, **page_data)
-            
-            if "query-continue" in data:
-                start_from = data["query-continue"]["backlinks"]["blcontinue"]
-            else:
-                break
+    
 
     def transclusions(self, template_page, limit="max"):
         page = self.page(template_page)
@@ -297,5 +202,164 @@ class Wiki(object):
                 start_from = data["query-continue"]["embeddedin"]["eicontinue"]
             else:
                 break
+    meta = Meta(self)
 
+class Page(object):
+    def __init__(self, wiki, **data):
+        self.wiki = wiki
+        self.title = None
+        self.__dict__.update(data)
+    
+    def __repr__(self):
+        return "<Page(%s)>" % repr(self.title)
+    
+    def __str__(self):
+        return self.title
+    
+    def query_info(self, **kwargs):
+        arguments = dict(
+            action = "query",
+            titles = self.title,
+        )
+        arguments.update(kwargs)
+        data = self.wiki.request(**arguments)
+        page_data = data["query"]["pages"].values()[0]
+        return page_data
+        
+    def read(self):
+        data = self.query_info(
+            prop = "revisions",
+            rvprop = "content",
+        )
+        return data["revisions"][0]["*"]
+        
+    def edit_token(self):
+        data = self.query_info(
+            prop = "info",
+            intoken = "edit",
+        )
+        return data["edittoken"]
+    
+    def edit(self, content, summary):
+        token = self.edit_token()
+        
+        return self.wiki.post_request(
+            action = "edit",
+            title = self.title,
+            token = token,
+            text = content.encode("utf-8"),
+            summary = summary,
+            bot = 1,
+            nocreate = 1,
+        )
+
+    def replace(self, old_text, new_text):
+        """Replace each occurence of old_text in the page's source with
+        new_text.
+
+        """
+
+        if old_text and new_text:
+            summary = "Replace %s with %s" % (old_text, new_text)
+        elif old_text:
+            summary = "Remove %s" % old_text
+        else:
+            raise ValueError("Invalid arguments")
+        
+        content = self.read()
+        content = content.replace(old_text, new_text)
+        self.edit(content, summary)
+
+    @property
+    def url(self):
+        return self.wiki.SITE_URL + urlencode({"x": self.title})[2:].replace("%2F", "/")
+
+    def backlinks(self, limit="max"):
+        start_from = None
+        while 1:
+            data = self.request(
+                action = "query",
+                list = "backlinks",
+                bllimit = limit,
+                bltitle = self.title,
+                blcontinue = start_from,
+            )
+            for page_data in data["query"]["backlinks"]:
+                yield Page(self, **page_data)
+            
+            if "query-continue" in data:
+                start_from = data["query-continue"]["backlinks"]["blcontinue"]
+            else:
+                break
+
+class Meta(object):
+    def __init__(self, wiki):
+        self.wiki = wiki
+
+    def tokens(self, kind="csrf"):
+        params = {
+            'action': 'query',
+            'meta': 'tokens',
+            'type': kind
+        }
+        data = self.request(**params)
+        if '|' in kind:
+            return data['query']['tokens']
+        else:
+            return data['query']['tokens'][kind+'token']
+
+    def userinfo(self, kind=None):
+        params = {
+            'action': 'query',
+            'meta': 'userinfo',
+            'type': kind,
+        }
+        data = self.wiki.request(**params)
+        return data['query']['userinfo']
+
+    def allmessages(self, messages='*', prop=None, enableparser=None,
+                    nocontent=None, includelocal=None, title=None,
+                    args=None, prefix=None, filt=None, customized=None,
+                    lang=None, start=None, end=None):
+        params = {
+            'action': 'query',
+            'meta': 'allmessages',
+            'ammessages': messages,
+            'amprop': prop,
+            'amenableparser': enableparser,
+            'amnocontent': nocontent,
+            'amincludelocal': includelocal,
+            'amtitle': title,
+            'amargs': '|'.join(args) if isinstance(args, list) else args
+            'amprefix': prefix,
+            'amfilter': filt,
+            'amcustomized': customized,
+            'amlang': lang,
+            'amfrom': start,
+            'amto': end
+        }
+        data = self.wiki.request(**params)
+        return data['query']['allmessages']
+
+    def filerepoinfo(self, prop=None):
+        params = {
+            'action': 'query',
+            'meta': 'filerepoinfo',
+            'friprop': prop,
+        }
+        data = self.wiki.request(**params)
+        return data['query']['repos']
+
+    def siteinfo(self, prop=None, filteriw=None, showalldb=None, numberingroup=None, inlanguagecode=None):
+        params = {
+            'action': 'query',
+            'meta': 'siteinfo',
+            'siprop': prop,
+            'sifilteriw': None if prop is None else filteriw,
+            'sishowalldb': None if prop is None else showalldb,
+            'sinumberingroup': None if prop is None else numberingroup,
+            'siinlanguagecode': inlanguagecode,
+        }
+        data = self.wiki.request(**params)
+        return data['query'].values()[0]
 
