@@ -5,7 +5,7 @@ with open('README.rst', 'r') as f:
 
 setup(
     name="mw-api-client",
-    version="0.0.1",
+    version="1.0.0a1",
     description="A simple MediaWiki client.",
     long_description=longdesc,
     url="https://github.com/Kenny2github/mw-api-client",
@@ -17,9 +17,10 @@ setup(
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content :: Wiki',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.6'
     ],
     keywords='mediawiki api requests',
-    py_modules=['mw-api-client'],
+    py_modules=['mw_api_client'],
     install_requires='requests',
     python_requires='>=2.7',
 )
