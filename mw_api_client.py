@@ -363,6 +363,82 @@ class Wiki(object):
             else:
                 break
 
+    def alltransclusions(self, limit="max", prefix=None, unique=False):
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'list': 'alltransclusions',
+            'atprefix': prefix,
+            'atlimit': limit,
+        }
+        if unique:
+            params['atunique'] = 'true'
+        else:
+            params['atprop'] = 'title|ids'
+
+        while 1:
+            params.update(last_cont)
+            data = self.request(**params)
+
+            for page_data in data['query']['alltransclusions']:
+                yield Page(self, **page_data)
+
+            if 'continue' in data:
+                last_cont = data['continue']
+            else:
+                break
+
+    def allusers(self, limit="max", prefix=None, **kwargs):
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'list': 'allusers',
+            'auprefix': prefix,
+            'aulimit': limit,
+            'auprop': 'blockinfo|groups|implicitgroups|rights|editcount'
+                      + '|registration'
+        }
+        params.update(kwargs)
+
+        while 1:
+            params.update(last_cont)
+            data = self.request(**params)
+
+            for user_data in data['query']['allusers']:
+                yield user_data
+
+            if 'continue' in data:
+                last_cont = data['continue']
+            else:
+                break
+
+    def blocks(self, limit="max", ip=None, users=None):
+        if ip is not None and users is not None:
+            raise ValueError("Cannot specify IP and username together!")
+
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'list': 'blocks',
+            'bkip': ip,
+            'bkusers': users,
+            'bklimit': limit,
+            'bkprop': 'id|user|userid|by|byid|timestamp|expiry|reason|range|'
+                      + 'flags'
+        }
+
+        while 1:
+            params.update(last_cont)
+            data = self.request(**params)
+
+            for block_data in data['query']['blocks']:
+                yield block_data
+
+            if 'continue' in data:
+                last_cont = data['continue']
+            else:
+                break
+
 class Page(object):
     """The class for a page on a wiki.
 
