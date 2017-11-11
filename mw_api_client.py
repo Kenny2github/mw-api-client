@@ -364,6 +364,7 @@ class Wiki(object):
                 break
 
     def alltransclusions(self, limit="max", prefix=None, unique=False):
+        """Retrieve a generator of all transclusions."""
         last_cont = {}
         params = {
             'action': 'query',
@@ -389,6 +390,7 @@ class Wiki(object):
                 break
 
     def allusers(self, limit="max", prefix=None, **kwargs):
+        """Retrieve a generator of all users, each item being a dict."""
         last_cont = {}
         params = {
             'action': 'query',
@@ -412,7 +414,10 @@ class Wiki(object):
             else:
                 break
 
-    def blocks(self, limit="max", ip=None, users=None):
+    def blocks(self, limit="max", blockip=None, users=None):
+        """Retrieve a generator of currently active blocks, each item being
+        a dict.
+        """
         if ip is not None and users is not None:
             raise ValueError("Cannot specify IP and username together!")
 
@@ -420,7 +425,7 @@ class Wiki(object):
         params = {
             'action': 'query',
             'list': 'blocks',
-            'bkip': ip,
+            'bkip': blockip,
             'bkusers': users,
             'bklimit': limit,
             'bkprop': 'id|user|userid|by|byid|timestamp|expiry|reason|range|'
@@ -433,6 +438,260 @@ class Wiki(object):
 
             for block_data in data['query']['blocks']:
                 yield block_data
+
+            if 'continue' in data:
+                last_cont = data['continue']
+            else:
+                break
+
+    def deletedrevs(self, limit="max", user=None, namespace=None):
+        """Retrieve a generator of all deleted Revisions.
+
+        This can be deleted user contributions (specify "user") or
+        deleted revisions in a certain namespace (specify "namespace")
+        or both.
+        """
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'list': 'deletedrevs',
+            'druser': user,
+            'drnamespace': namespace,
+            'drprop': 'revid|parentid|'
+                      + '' if user is not None else 'user|userid'
+                      + 'comment|parsedcomment|minor|len|sha1|tags',
+            'drlimit': limit
+        }
+
+        while 1:
+            params.update(last_cont)
+            data = self.request(**params)
+
+            for page in data['query']['deletedrevs']:
+                for rev_data in page['revisions']:
+                    yield Revision(self,
+                                   Page(self, title=page['title']),
+                                   **rev_data)
+
+            if 'continue' in data:
+                last_cont = data['continue']
+            else:
+                break
+
+    def exturlusage(self, limit="max", url=None, protocol=None, **kwargs):
+        """Retrieve a generator of Pages that link to a particular URL or
+        protocol, or simply external links in general.
+
+        These pages will have an extra attribute, `url`, that shows what
+        URL they link to externally.
+        """
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'list': 'exturlusage',
+            'euquery': url,
+            'euprotocol': protocol,
+            'eulimit': limit
+        }
+        params.update(kwargs)
+
+        while 1:
+            params.update(last_cont)
+            data = self.request(**params)
+
+            for page in data['query']['exturlusage']:
+                yield Page(self, **page)
+
+            if 'continue' in data:
+                last_cont = data['continue']
+            else:
+                break
+
+    def filearchive(self, limit="max", prefix=None):
+        """Retrieve a generator of deleted files, represented as Pages."""
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'list': 'filearchive',
+            'faprop': 'sha1|timestamp|user|size|description|parseddescription|'
+                      + 'mime|mediatype|metadata|bitdepth|archivename',
+            'falimit': limit,
+            'faprefix': prefix
+        }
+
+        while 1:
+            params.update(last_cont)
+            data = self.request(**params)
+
+            for page in data['query']['filearchive']:
+                yield Page(self, **page)
+
+            if 'continue' in data:
+                last_cont = data['continue']
+            else:
+                break
+
+    def interwikibacklinks(self, iwprefix, iwtitle=None, limit="max"):
+        """Retrieve a generator of Pages that link to a particular
+        interwiki prefix (and title, if specified)
+        """
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'list': 'iwbacklinks',
+            'iwblprefix': iwprefix,
+            'iwbltitle': iwtitle,
+            'iwbllimit': limit,
+            'iwblprop': 'iwprefix|iwtitle'
+        }
+
+        while 1:
+            params.update(last_cont)
+            data = self.request(**params)
+
+            for page in data['query']['iwbacklinks']:
+                yield Page(self, **page)
+
+            if 'continue' in data:
+                last_cont = data['continue']
+            else:
+                break
+
+    def languagebacklinks(self, langprefix, langtitle=None, limit="max"):
+        """Retrieve a generator of Pages that link to a particular language
+        code (and title, if specified)
+        """
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'list': 'langbacklinks',
+            'lbllang': langprefix,
+            'lbltitle': langtitle,
+            'lbllimit': limit,
+            'lblprop': 'lllang|lltitle'
+        }
+
+        while 1:
+            params.update(last_cont)
+            data = self.request(**params)
+
+            for page in data['query']['langbacklinks']:
+                yield Page(self, **page)
+
+            if 'continue' in data:
+                last_cont = data['continue']
+            else:
+                break
+
+    def logevents(self, limit="max", title=None, user=None):
+        """Retrieve a generator of log events, each event being a dict.
+
+        For more information on results, see:
+        https://www.mediawiki.org/wiki/API:Logevents
+        """
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'list': 'logevents',
+            'leprop': 'ids|title|type|user|userid|timestamp|comment|'
+                      + 'parsedcomment|details|tags',
+            'leuser': user,
+            'letitle': title,
+            'lelimit': limit
+        }
+
+        while 1:
+            params.update(last_cont)
+            data = self.request(**params)
+
+            for log_data in data['query']['logevents']:
+                yield log_data
+
+            if 'continue' in data:
+                last_cont = data['continue']
+            else:
+                break
+
+    def pagepropnames(self):
+        """Retrieve a generator of all possible page properties."""
+        params = {
+            'action': 'query',
+            'list': 'pagepropnames',
+            'ppnlimit': 'max',
+        }
+        data = self.request(**params)
+
+        for prop in data['query']['pagepropnames']:
+            yield prop['propname']
+
+    def pageswithprop(self, prop, limit="max"):
+        """Retrieve a generator of Pages with a particular property."""
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'list': 'pageswithprop',
+            'pwppropname': prop,
+            'pwpprop': 'ids|title|value',
+            'pwplimit': limit,
+        }
+
+        while 1:
+            params.update(last_cont)
+            data = self.request(**params)
+
+            for page in data['query']['pageswithprop']:
+                yield Page(self, **page)
+
+            if 'continue' in data:
+                last_cont = data['continue']
+            else:
+                break
+
+    def protectedtitles(self, limit="max", level=None, namespace=None):
+        """Retrieve a generator of Pages protected from creation.
+
+        This means that all of the Pages returned will have the "missing"
+        attribute set.
+        """
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'list': 'protectedtitles',
+            'ptnamespace': namespace,
+            'ptlevel': level,
+            'ptprop': 'timestamp|user|userid|comment|'
+                      + 'parsedcomment|expiry|level',
+            'ptlimit': limit
+        }
+
+        while 1:
+            params.update(last_cont)
+            data = self.request(**params)
+
+            for page in data['query']['protectedtitles']:
+                yield Page(self, **page)
+
+            if 'continue' in data:
+                last_cont = data['continue']
+            else:
+                break
+
+    def random(self, limit="max", namespace=None):
+        """Retrieve a generator of random Pages."""
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'list': 'random',
+            'rnnamespace': namespace,
+            'rnlimit': limit
+        }
+
+        while 1:
+            params.update(last_cont)
+            data = self.request(**params)
+
+            for page in data['query']['random']:
+                yield Page(self, **page)
 
             if 'continue' in data:
                 last_cont = data['continue']
@@ -578,6 +837,35 @@ class Page(object):
             else:
                 break
 
+    def deletedrevs(self, limit="max", **kwargs):
+        """Get a generator of deleted Revisions for this page.
+
+        See https://www.mediawiki.org/wiki/API:Deletedrevs for explaantions
+        of the various paraemeters.
+        """
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'list': 'deletedrevs',
+            'titles': self.title,
+            'drprop': 'revid|parentid|user|userid|comment|parsedcomment|minor|'
+                      + 'len|sha1|tags',
+            'drlimit': limit
+        }
+        params.update(kwargs)
+
+        while 1:
+            params.update(last_cont)
+            data = self.wiki.request(**params)
+
+            for rev_data in list(data['query']['deletedrevs'].values())[0]['revisions']:
+                yield Revision(self.wiki, self, **rev_data)
+
+            if 'continue' in data:
+                last_cont = data['continue']
+            else:
+                break
+
     @property
     def url(self):
         """Return an approximation of the canonical URL for the page."""
@@ -648,6 +936,45 @@ class Page(object):
                 last_cont = data["continue"]
             else:
                 break
+
+    def imageusage(self, limit="max", namespace=None):
+        """Return a generator of Pages that link to this image."""
+        if not self.title.startswith("File:"):
+            raise ValueError('Page is not a file')
+
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'list': 'imageusage',
+            'iutitle': self.title,
+            'iunamespace': namespace,
+            'iulimit': limit
+        }
+
+        while 1:
+            params.update(last_cont)
+            data = self.wiki.request(**params)
+
+            for page in data['query']['imageusage']:
+                yield Page(self.wiki, **page)
+
+            if 'continue' in data:
+                last_cont = data['continue']
+            else:
+                break
+
+    def pagepropnames(self):
+        """Retrieve a generator of property names for this page."""
+        params = {
+            'action': 'query',
+            'list': 'pagepropnames',
+            'titles': self.title,
+            'ppnlimit': 'max',
+        }
+        data = self.wiki.request(**params)
+
+        for prop in data['query']['pagepropnames']:
+            yield prop['propname']
 
 class Revision(object):
     """The class for a revision of a page.
