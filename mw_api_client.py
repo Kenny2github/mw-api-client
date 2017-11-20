@@ -93,15 +93,16 @@ class Wiki(object):
     """The base class for a wiki. Contains most API modules as methods."""
     USER_AGENT = "PythonBot Kenny2github~~~~ ~blob8108"
 
-    def __init__(self, url, site_url, api_url):
+    def __init__(self, api_url):
         """Initialize a wiki with its URLs.
 
         Additionally create a Meta instance.
         """
-        self.wiki_url = url
-        self.site_url = self.wiki_url + site_url
-        self.api_url = self.wiki_url + api_url
+        self.api_url = api_url
         self.meta = Meta(self)
+        data = self.meta.siteinfo()
+        self.wiki_url = data['server']
+        self.site_url = data['server'] + data['articlepath']
 
     def __repr__(self):
         """Represent a Wiki object."""
@@ -128,8 +129,11 @@ class Wiki(object):
 
         assert response.ok
 
-        if 'error' in response.json():
-            error = response.json()['error']
+        print(response.text)
+        data = response.json()
+
+        if 'error' in data:
+            error = data['error']
             error_code = error['code']
             if error_code in ERRORS:
                 error_cls = ERRORS[error_code]
@@ -137,7 +141,7 @@ class Wiki(object):
                 raise WikiError(error)
             raise error_cls(error)
 
-        return response.json()
+        return data
 
     def post_request(self, **params):
         """Alias for Wiki.request(_post=True)"""
@@ -754,8 +758,8 @@ class Page(object):
             'rvlimit': "1",
         })
         if length is not None:
-            return data["revisions"][0]["*"][:length]
-        return data['revisions'][0]['*']
+            return list(data['query']['pages'].values())[0]["revisions"][0]["*"][:length]
+        return list(data['query']['pages'].values())[0]['revisions'][0]['*']
 
     def edit_token(self):
         """Retrieve an edit token for the page.
