@@ -66,6 +66,7 @@ try:
     from urllib.parse import urlencode
 except ImportError:
     from urllib import urlencode
+import re
 import requests
 
 SESH = requests.session()
@@ -84,14 +85,20 @@ class PermissionDenied(WikiError):
     """Permission is denied for that action."""
     pass
 
+class MustBePosted(WikiError):
+    """You must POST some of the parameters in the request."""
+    pass
+
 
 ERRORS = {
     'permissiondenied': PermissionDenied,
+    'mustbeposted': MustBePosted,
+    'mustpostparams': MustBePosted,
 }
 
 class Wiki(object):
     """The base class for a wiki. Contains most API modules as methods."""
-    USER_AGENT = "PythonBot Kenny2github~~~~ ~blob8108"
+    USER_AGENT = "Python MediaWiki API Client, by Kenny2github, based off of blob8108's original."
 
     def __init__(self, api_url):
         """Initialize a wiki with its URLs.
@@ -102,7 +109,7 @@ class Wiki(object):
         self.meta = Meta(self)
         data = self.meta.siteinfo()
         self.wiki_url = data['server']
-        self.site_url = data['server'] + data['articlepath']
+        self.site_url = data['server'] + data['articlepath'].replace('$1', '')
 
     def __repr__(self):
         """Represent a Wiki object."""
@@ -135,10 +142,7 @@ class Wiki(object):
         if 'error' in data:
             error = data['error']
             error_code = error['code']
-            if error_code in ERRORS:
-                error_cls = ERRORS[error_code]
-            else:
-                raise WikiError(error)
+            error_cls = ERRORS.get(error_code, WikiError)
             raise error_cls(error)
 
         return data
