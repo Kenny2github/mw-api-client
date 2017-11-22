@@ -18,9 +18,9 @@ Example Usage
 =============
     import mw_api_client as mwapi
 
-Get a page::
+Get a page:
 
-    wiki = mwapi.Wiki("https://en.wikipedia.org/", "wiki/", "w/api.php")
+    wiki = mwapi.Wiki("https://en.wikipedia.org/w/api.php")
 
     wiki.login("kenny2wiki", password)
 
@@ -165,7 +165,7 @@ class Wiki(object):
             return title
         return Page(self, title=title)
 
-    def allcategories(self, limit="max", prefix=None):
+    def allcategories(self, limit="max", prefix=None, getinfo=True):
         """Retrieve a generator of all categories represented as Pages."""
         last_cont = {}
         params = {
@@ -180,7 +180,7 @@ class Wiki(object):
             data = self.request(**params)
 
             for page_data in data['query']['allcategories']:
-                yield Page(self, **page_data)
+                yield Page(self, getinfo=getinfo **page_data)
 
             if 'continue' in data:
                 last_cont = data['continue']
@@ -211,7 +211,8 @@ class Wiki(object):
             else:
                 break
 
-    def allfileusages(self, limit="max", prefix=None, unique=False):
+    def allfileusages(self, limit="max", prefix=None,
+                      unique=False, getinfo=True):
         """Retrieve a generator of Pages corresponding to all file usages."""
         last_cont = {}
         params = {
@@ -230,14 +231,14 @@ class Wiki(object):
             data = self.request(**params)
 
             for page_data in data['query']['allfileusages']:
-                yield Page(self, **page_data)
+                yield Page(self, getinfo=getinfo, **page_data)
 
             if 'continue' in data:
                 last_cont = data['continue']
             else:
                 break
 
-    def allimages(self, limit="max", prefix=None, mime=None):
+    def allimages(self, limit="max", prefix=None, mime=None, getinfo=True):
         """Retrieve a generator of all images represented as Pages."""
         last_cont = {}
         params = {
@@ -256,14 +257,15 @@ class Wiki(object):
             data = self.request(**params)
 
             for page_data in data['query']['allimages']:
-                yield Page(self, **page_data)
+                yield Page(self, getinfo=getinfo, **page_data)
 
             if 'continue' in data:
                 last_cont = data['continue']
             else:
                 break
 
-    def alllinks(self, limit="max", namespace='0', prefix=None, unique=False):
+    def alllinks(self, limit="max", namespace='0',
+                 prefix=None, getinfo=True):
         """Retrieve a generator of all links."""
         last_cont = {}
         params = {
@@ -271,26 +273,23 @@ class Wiki(object):
             'list': 'alllinks',
             'allimit': limit,
             'alprefix': prefix,
-            'alnamespace': namespace
+            'alnamespace': namespace,
+            'alprop': 'ids|title',
         }
-        if unique:
-            params['alunique'] = 'true'
-        else:
-            params['alprop'] = 'ids|title'
 
         while 1:
             params.update(last_cont)
             data = self.request(**params)
 
             for page_data in data['query']['alllinks']:
-                yield Page(self, **page_data)
+                yield Page(self, getinfo=getinfo, **page_data)
 
             if 'continue' in data:
                 last_cont = data['continue']
             else:
                 break
 
-    def allpages(self, limit="max", namespace="0", prefix=None):
+    def allpages(self, limit="max", namespace="0", prefix=None, getinfo=True):
         """Retrieve a generator of all Pages.
 
         NOTE: This may take a long time on very large wikis!
@@ -309,14 +308,15 @@ class Wiki(object):
             data = self.request(**params)
 
             for page_data in data['query']['allpages']:
-                yield Page(self, **page_data)
+                yield Page(self, getinfo=getinfo, **page_data)
 
             if 'continue' in data:
                 last_cont = data['continue']
             else:
                 break
 
-    def allredirects(self, limit="max", prefix=None, unique=False):
+    def allredirects(self, limit="max", prefix=None,
+                     unique=False, getinfo=True):
         """Retrieve a generator of all Pages that are redirects."""
         last_cont = {}
         params = {
@@ -335,14 +335,14 @@ class Wiki(object):
             data = self.request(**params)
 
             for page_data in data['query']['allredirects']:
-                yield Page(self, **page_data)
+                yield Page(self, getinfo=getinfo, **page_data)
 
             if 'continue' in data:
                 last_cont = data['continue']
             else:
                 break
 
-    def allrevisions(self, limit="max", **kwargs):
+    def allrevisions(self, limit="max", getinfo=True, **kwargs):
         """Retrieve a generator of all revisions."""
         last_cont = {}
         params = {
@@ -360,14 +360,16 @@ class Wiki(object):
 
             for page in data['query']['allrevisions']:
                 for rev_data in page['revisions']:
-                    yield Revision(self, Page(self, title=page['title']), **rev_data)
+                    yield Revision(self, Page(self, getinfo=getinfo, **page),
+                                   **rev_data)
 
             if 'continue' in data:
                 last_cont = data['continue']
             else:
                 break
 
-    def alltransclusions(self, limit="max", prefix=None, unique=False):
+    def alltransclusions(self, limit="max", prefix=None,
+                         unique=False, getinfo=True):
         """Retrieve a generator of all transclusions."""
         last_cont = {}
         params = {
@@ -386,7 +388,7 @@ class Wiki(object):
             data = self.request(**params)
 
             for page_data in data['query']['alltransclusions']:
-                yield Page(self, **page_data)
+                yield Page(self, getinfo=getinfo, **page_data)
 
             if 'continue' in data:
                 last_cont = data['continue']
@@ -422,7 +424,7 @@ class Wiki(object):
         """Retrieve a generator of currently active blocks, each item being
         a dict.
         """
-        if ip is not None and users is not None:
+        if blockip is not None and users is not None:
             raise ValueError("Cannot specify IP and username together!")
 
         last_cont = {}
@@ -448,7 +450,7 @@ class Wiki(object):
             else:
                 break
 
-    def deletedrevs(self, limit="max", user=None, namespace=None):
+    def deletedrevs(self, limit="max", user=None, namespace=None, getinfo=True):
         """Retrieve a generator of all deleted Revisions.
 
         This can be deleted user contributions (specify "user") or
@@ -474,7 +476,7 @@ class Wiki(object):
             for page in data['query']['deletedrevs']:
                 for rev_data in page['revisions']:
                     yield Revision(self,
-                                   Page(self, title=page['title']),
+                                   Page(self, getinfo=getinfo, **page),
                                    **rev_data)
 
             if 'continue' in data:
@@ -482,7 +484,8 @@ class Wiki(object):
             else:
                 break
 
-    def exturlusage(self, limit="max", url=None, protocol=None, **kwargs):
+    def exturlusage(self, limit="max", url=None, protocol=None,
+                    getinfo=True, **kwargs):
         """Retrieve a generator of Pages that link to a particular URL or
         protocol, or simply external links in general.
 
@@ -504,14 +507,14 @@ class Wiki(object):
             data = self.request(**params)
 
             for page in data['query']['exturlusage']:
-                yield Page(self, **page)
+                yield Page(self, getinfo=getinfo, **page)
 
             if 'continue' in data:
                 last_cont = data['continue']
             else:
                 break
 
-    def filearchive(self, limit="max", prefix=None):
+    def filearchive(self, limit="max", prefix=None, getinfo=True):
         """Retrieve a generator of deleted files, represented as Pages."""
         last_cont = {}
         params = {
@@ -528,14 +531,15 @@ class Wiki(object):
             data = self.request(**params)
 
             for page in data['query']['filearchive']:
-                yield Page(self, **page)
+                yield Page(self, getinfo=getinfo, **page)
 
             if 'continue' in data:
                 last_cont = data['continue']
             else:
                 break
 
-    def interwikibacklinks(self, iwprefix, iwtitle=None, limit="max"):
+    def interwikibacklinks(self, iwprefix, iwtitle=None,
+                           limit="max", getinfo=True):
         """Retrieve a generator of Pages that link to a particular
         interwiki prefix (and title, if specified)
         """
@@ -554,14 +558,15 @@ class Wiki(object):
             data = self.request(**params)
 
             for page in data['query']['iwbacklinks']:
-                yield Page(self, **page)
+                yield Page(self, getinfo=getinfo, **page)
 
             if 'continue' in data:
                 last_cont = data['continue']
             else:
                 break
 
-    def languagebacklinks(self, langprefix, langtitle=None, limit="max"):
+    def languagebacklinks(self, langprefix, langtitle=None,
+                          limit="max", getinfo=True):
         """Retrieve a generator of Pages that link to a particular language
         code (and title, if specified)
         """
@@ -580,7 +585,7 @@ class Wiki(object):
             data = self.request(**params)
 
             for page in data['query']['langbacklinks']:
-                yield Page(self, **page)
+                yield Page(self, getinfo=getinfo, **page)
 
             if 'continue' in data:
                 last_cont = data['continue']
@@ -628,7 +633,7 @@ class Wiki(object):
         for prop in data['query']['pagepropnames']:
             yield prop['propname']
 
-    def pageswithprop(self, prop, limit="max"):
+    def pageswithprop(self, prop, limit="max", getinfo=True):
         """Retrieve a generator of Pages with a particular property."""
         last_cont = {}
         params = {
@@ -644,14 +649,15 @@ class Wiki(object):
             data = self.request(**params)
 
             for page in data['query']['pageswithprop']:
-                yield Page(self, **page)
+                yield Page(self, getinfo=getinfo, **page)
 
             if 'continue' in data:
                 last_cont = data['continue']
             else:
                 break
 
-    def protectedtitles(self, limit="max", level=None, namespace=None):
+    def protectedtitles(self, limit="max", level=None,
+                        namespace=None, getinfo=True):
         """Retrieve a generator of Pages protected from creation.
 
         This means that all of the Pages returned will have the "missing"
@@ -673,14 +679,14 @@ class Wiki(object):
             data = self.request(**params)
 
             for page in data['query']['protectedtitles']:
-                yield Page(self, **page)
+                yield Page(self, getinfo=getinfo, **page)
 
             if 'continue' in data:
                 last_cont = data['continue']
             else:
                 break
 
-    def random(self, limit="max", namespace=None):
+    def random(self, limit="max", namespace=None, getinfo=True):
         """Retrieve a generator of random Pages."""
         last_cont = {}
         params = {
@@ -695,7 +701,7 @@ class Wiki(object):
             data = self.request(**params)
 
             for page in data['query']['random']:
-                yield Page(self, **page)
+                yield Page(self, getinfo=getinfo, **page)
 
             if 'continue' in data:
                 last_cont = data['continue']
@@ -709,7 +715,7 @@ class Page(object):
 
     Pages with the "missing" attribute set evaluate to False.
     """
-    def __init__(self, wiki, **data):
+    def __init__(self, wiki, getinfo=True, **data):
         """Initialize a page with its wiki and initially don't set a title.
 
         The Wiki class sets the title automatically, since the Page __init__
@@ -718,7 +724,8 @@ class Page(object):
         self.wiki = wiki
         self.title = None
         self.__dict__.update(data)
-        self.__dict__.update(self.info())
+        if getinfo:
+            self.__dict__.update(self.info())
 
     def __bool__(self):
         """Return the boolean state of a page."""
@@ -844,7 +851,7 @@ class Page(object):
     def deletedrevs(self, limit="max", **kwargs):
         """Get a generator of deleted Revisions for this page.
 
-        See https://www.mediawiki.org/wiki/API:Deletedrevs for explaantions
+        See https://www.mediawiki.org/wiki/API:Deletedrevs for explanations
         of the various paraemeters.
         """
         last_cont = {}
@@ -875,7 +882,7 @@ class Page(object):
         """Return an approximation of the canonical URL for the page."""
         return self.wiki.site_url + urlencode({"x": self.title})[2:].replace("%2F", "/")
 
-    def backlinks(self, limit="max"):
+    def backlinks(self, limit="max", getinfo=True):
         """Return a generator of Pages that link to this page."""
         last_cont = {}
         params = {
@@ -889,14 +896,14 @@ class Page(object):
             data = self.wiki.request(**params)
 
             for page_data in data["query"]["backlinks"]:
-                yield Page(self.wiki, **page_data)
+                yield Page(self.wiki, getinfo=getinfo, **page_data)
 
             if "continue" in data:
                 last_cont = data["continue"]
             else:
                 break
 
-    def transclusions(self, limit="max"):
+    def transclusions(self, limit="max", getinfo=True):
         """Return a generator of Pages that transclude this page."""
         last_cont = {}
         params = {
@@ -910,14 +917,14 @@ class Page(object):
             data = self.wiki.request(**params)
 
             for page_data in data["query"]["embeddedin"]:
-                yield Page(self.wiki, **page_data)
+                yield Page(self.wiki, getinfo=getinfo, **page_data)
 
             if "continue" in data:
                 last_cont = data["continue"]
             else:
                 break
 
-    def category_members(self, limit="max"):
+    def categorymembers(self, limit="max", getinfo=True):
         """Return a generator of Pages in this category."""
         if not self.title.startswith("Category:"):
             raise ValueError('Page is not a category.')
@@ -934,14 +941,14 @@ class Page(object):
             data = self.wiki.request(**params)
 
             for page in data["query"]["categorymembers"]:
-                yield Page(self.wiki, **page)
+                yield Page(self.wiki, getinfo=getinfo, **page)
 
             if "continue" in data:
                 last_cont = data["continue"]
             else:
                 break
 
-    def imageusage(self, limit="max", namespace=None):
+    def imageusage(self, limit="max", namespace=None, getinfo=True):
         """Return a generator of Pages that link to this image."""
         if not self.title.startswith("File:"):
             raise ValueError('Page is not a file')
@@ -960,7 +967,7 @@ class Page(object):
             data = self.wiki.request(**params)
 
             for page in data['query']['imageusage']:
-                yield Page(self.wiki, **page)
+                yield Page(self.wiki, getinfo=getinfo, **page)
 
             if 'continue' in data:
                 last_cont = data['continue']
@@ -1076,7 +1083,8 @@ class Meta(object):
         data = self.wiki.request(**params)
         return data['query']['userinfo']
 
-    def allmessages(self, messages='*', args=None, prefix=None, **kwargs):
+    def allmessages(self, messages='*', args=None, prefix=None,
+                    getinfo=True, **kwargs):
         """Retrieve a list of all interface messages.
 
         The "messages" parameter specifies what messages to retrieve (default all).
@@ -1102,7 +1110,7 @@ class Meta(object):
             data = self.wiki.request(**params)
 
             for page_data in data['query']['allmessages']:
-                yield Page(self.wiki, **page_data)
+                yield Page(self.wiki, getinfo=getinfo, **page_data)
 
             if 'continue' in data:
                 last_cont = data['continue']
