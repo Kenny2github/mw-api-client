@@ -1,15 +1,9 @@
 """
 A really simple MediaWiki API client.
 
-Can:
+Can use all MediaWiki API modules as of 23/11/2017
 
-  * read pages
-  * edit pages
-  * list pages in category
-  * list page backlinks ("what links here")
-  * list page transclusions
-
-Requires the `requests` library.
+Requires the ``requests`` library.
 
 http://www.mediawiki.org/
 
@@ -29,7 +23,7 @@ Get a page:
 Edit page:
 
     # Get the page
-    contents = sandbox.contents
+    contents = sandbox.read()
 
     # Change
     contents += "\n This is a test!"
@@ -38,14 +32,14 @@ Edit page:
     # Submit
     sandbox.edit(contents, summary)
 
-List pages in category::
+List pages in category:
 
-    for page in wiki.category_members("Redirects"):
+    for page in wiki.page("Category:Redirects").categorymembers():
         print page.title
 
-Remove all uses of a template::
+Remove all uses of a template:
 
-    target_pages = wiki.page("Template:Stub").transclusions()
+    target_pages = list(wiki.page("Template:Stub").transclusions())
 
     # Sort by title because it's prettier that way
     target_pages.sort(key=lambda x: x.title)
@@ -98,14 +92,21 @@ ERRORS = {
 
 class Wiki(object):
     """The base class for a wiki. Contains most API modules as methods."""
-    USER_AGENT = "Python MediaWiki API Client, by Kenny2github, based off of blob8108's original."
 
-    def __init__(self, api_url):
+    def __init__(self, api_url, user_agent=None):
         """Initialize a wiki with its URLs.
 
         Additionally create a Meta instance.
+
+        If user_agent is specified, all requests will use that user agent.
+        Otherwise, a generic user agent is used.
         """
         self.api_url = api_url
+        if user_agent is not None:
+            self.USER_AGENT = user_agent
+        else:
+            self.USER_AGENT = "Python MediaWiki API Client, by Kenny2github, \
+based off of blob8108's original."
         self.meta = Meta(self)
         data = self.meta.siteinfo()
         self.wiki_url = data['server']
@@ -116,6 +117,23 @@ class Wiki(object):
         return "<Wiki at {addr}>".format(addr=self.wiki_url)
 
     __str__ = __repr__
+
+    @staticmethod
+    def _wraplimit(limit, wrap=500):
+        if isinstance(limit, str):
+            if limit == 'max':
+                return limit
+            else:
+                limit = int(limit) - wrap
+                if limit < 1:
+                    limit = 1
+                return limit
+        elif isinstance(limit, int):
+            limit -= wrap
+            if limit < 1:
+                return limit
+        else:
+            raise TypeError('"limit" must be str or int, not ' + type(limit).__name__)
 
     def request(self, _headers=None, _post=False, **params):
         """Inner request method.
@@ -188,6 +206,7 @@ class Wiki(object):
 
             if 'continue' in data:
                 last_cont = data['continue']
+                last_cont['aclimit'] = self._wraplimit(params['aclimit'])
             else:
                 break
 
@@ -212,6 +231,7 @@ class Wiki(object):
 
             if 'continue' in data:
                 last_cont = data['continue']
+                last_cont['adrlimit'] = self._wraplimit(params['adrlimit'])
             else:
                 break
 
@@ -239,6 +259,7 @@ class Wiki(object):
 
             if 'continue' in data:
                 last_cont = data['continue']
+                last_cont['aflimit'] = self._wraplimit(params['aflimit'])
             else:
                 break
 
@@ -265,6 +286,7 @@ class Wiki(object):
 
             if 'continue' in data:
                 last_cont = data['continue']
+                last_cont['ailimit'] = self._wraplimit(params['ailimit'])
             else:
                 break
 
@@ -290,6 +312,7 @@ class Wiki(object):
 
             if 'continue' in data:
                 last_cont = data['continue']
+                last_cont['allimit'] = self._wraplimit(params['allimit'])
             else:
                 break
 
@@ -316,6 +339,7 @@ class Wiki(object):
 
             if 'continue' in data:
                 last_cont = data['continue']
+                last_cont['aplimit'] = self._wraplimit(params['aplimit'])
             else:
                 break
 
@@ -343,6 +367,7 @@ class Wiki(object):
 
             if 'continue' in data:
                 last_cont = data['continue']
+                last_cont['arlimit'] = self._wraplimit(params['arlimit'])
             else:
                 break
 
@@ -369,6 +394,7 @@ class Wiki(object):
 
             if 'continue' in data:
                 last_cont = data['continue']
+                last_cont['arvlimit'] = self._wraplimit(params['arvlimit'])
             else:
                 break
 
@@ -396,6 +422,7 @@ class Wiki(object):
 
             if 'continue' in data:
                 last_cont = data['continue']
+                last_cont['atlimit'] = self._wraplimit(params['atlimit'])
             else:
                 break
 
@@ -421,6 +448,7 @@ class Wiki(object):
 
             if 'continue' in data:
                 last_cont = data['continue']
+                last_cont['aulimit'] = self._wraplimit(params['aulimit'])
             else:
                 break
 
@@ -451,6 +479,7 @@ class Wiki(object):
 
             if 'continue' in data:
                 last_cont = data['continue']
+                last_cont['bklimit'] = self._wraplimit(params['bklimit'])
             else:
                 break
 
@@ -485,6 +514,7 @@ class Wiki(object):
 
             if 'continue' in data:
                 last_cont = data['continue']
+                last_cont['drlimit'] = self._wraplimit(params['drlimit'])
             else:
                 break
 
@@ -515,6 +545,7 @@ class Wiki(object):
 
             if 'continue' in data:
                 last_cont = data['continue']
+                last_cont['eulimit'] = self._wraplimit(params['eulimit'])
             else:
                 break
 
@@ -539,6 +570,7 @@ class Wiki(object):
 
             if 'continue' in data:
                 last_cont = data['continue']
+                last_cont['falimit'] = self._wraplimit(params['falimit'])
             else:
                 break
 
@@ -566,6 +598,7 @@ class Wiki(object):
 
             if 'continue' in data:
                 last_cont = data['continue']
+                last_cont['iwblimit'] = self._wraplimit(params['iwblimit'])
             else:
                 break
 
@@ -593,6 +626,7 @@ class Wiki(object):
 
             if 'continue' in data:
                 last_cont = data['continue']
+                last_cont['lbllimit'] = self._wraplimit(params['lbllimit'])
             else:
                 break
 
@@ -622,6 +656,7 @@ class Wiki(object):
 
             if 'continue' in data:
                 last_cont = data['continue']
+                last_cont['lelimit'] = self._wraplimit(params['leimit'])
             else:
                 break
 
@@ -657,6 +692,7 @@ class Wiki(object):
 
             if 'continue' in data:
                 last_cont = data['continue']
+                last_cont['pwplimit'] = self._wraplimit(params['pwplimit'])
             else:
                 break
 
@@ -687,6 +723,7 @@ class Wiki(object):
 
             if 'continue' in data:
                 last_cont = data['continue']
+                last_cont['ptlimit'] = self._wraplimit(params['ptlimit'])
             else:
                 break
 
@@ -709,6 +746,7 @@ class Wiki(object):
 
             if 'continue' in data:
                 last_cont = data['continue']
+                last_cont['rnlimit'] = self._wraplimit(params['rnlimit'], 20)
             else:
                 break
 
@@ -724,6 +762,8 @@ class Page(object):
 
         The Wiki class sets the title automatically, since the Page __init__
         updates its __dict__.
+
+        If `getinfo` is True, request page info for the page.
         """
         self.wiki = wiki
         self.title = None
@@ -755,12 +795,8 @@ class Page(object):
         page_data = list(data["query"]["pages"].values())[0]
         return page_data
 
-    def read(self, length=None):
-        """Retrieve the page's content.
-
-        The "length" parameter is there to make the Page object a file-like
-        object.
-        """
+    def read(self):
+        """Retrieve the page's content."""
         data = self.wiki.request(**{
             'action': "query",
             'titles': self.title,
@@ -793,14 +829,6 @@ class Page(object):
             'bot': 1,
             'nocreate': 1,
         })
-
-    #note: this is the only place where it differs from a file object.
-    #If something writes to it multiple times, it does not append the
-    #second write and onwards - it simply rewrites it. This is because
-    #there is no read/write head.
-    write = edit
-
-    content = property(read, edit) #make content retrievable using a property
 
     def replace(self, old_text, new_text=''):
         """Replace each occurence of old_text in the page's source with
