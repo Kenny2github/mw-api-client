@@ -61,19 +61,14 @@ try:
 except ImportError:
     from urllib import urlencode
 import re
+import time
 import requests
 
 SESH = requests.session()
 
 class WikiError(Exception):
     """An arbitrary wiki error."""
-    def __init__(self, error):
-        Exception.__init__(self)
-        self.info = None
-        self.__dict__.update(error)
-
-    def __str__(self):
-        return self.info
+    pass
 
 class PermissionDenied(WikiError):
     """Permission is denied for that action."""
@@ -83,6 +78,11 @@ class MustBePosted(WikiError):
     """You must POST some of the parameters in the request."""
     pass
 
+class EditConflict(WikiError):
+    """The last fetch of the page's content
+    was before the most recent revision.
+    """
+    pass
 
 ERRORS = {
     'permissiondenied': PermissionDenied,
@@ -118,8 +118,19 @@ based off of blob8108's original."
 
     __str__ = __repr__
 
-    @staticmethod
-    def _wraplimit(limit, wrap=500):
+    def _wraplimit(self, kwds):
+        module = kwds['action'] + '+' + kwds.get('list', kwds.get('prop', kwds.get('meta')))
+        params = {
+            'action': 'paraminfo',
+            'modules': module,
+        }
+        data = self.request(**params)
+        data = data['paraminfo']['modules'][0]
+        for param in data['parameters']:
+            if param['name'] == 'limit':
+                wrap = param['highmax']
+                break
+        limit = kwds[data['prefix'] + 'limit']
         if isinstance(limit, str):
             if limit == 'max':
                 return limit
@@ -131,7 +142,8 @@ based off of blob8108's original."
         elif isinstance(limit, int):
             limit -= wrap
             if limit < 1:
-                return limit
+                limit = 1
+            return limit
         else:
             raise TypeError('"limit" must be str or int, not ' + type(limit).__name__)
 
@@ -159,9 +171,7 @@ based off of blob8108's original."
 
         if 'error' in data:
             error = data['error']
-            error_code = error['code']
-            error_cls = ERRORS.get(error_code, WikiError)
-            raise error_cls(error)
+            raise WikiError(error['code'] + ': ' + error['info'])
 
         return data
 
@@ -202,11 +212,18 @@ based off of blob8108's original."
             data = self.request(**params)
 
             for page_data in data['query']['allcategories']:
-                yield Page(self, getinfo=getinfo **page_data)
+                page_data['title'] = page_data['*']
+                del page_data['*']
+                yield Page(self, getinfo=getinfo, **page_data)
 
-            if 'continue' in data:
-                last_cont = data['continue']
-                last_cont['aclimit'] = self._wraplimit(params['aclimit'])
+            if limit == 'max' \
+                   or len(data['query']['allcategories']) \
+                   < params['aclimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['aclimit'] = self._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -229,9 +246,14 @@ based off of blob8108's original."
             for rev_data in data['query']['alldeletedrevisions']:
                 yield Revision(self, **rev_data)
 
-            if 'continue' in data:
-                last_cont = data['continue']
-                last_cont['adrlimit'] = self._wraplimit(params['adrlimit'])
+            if limit == 'max' \
+                   or len(data['query']['alldeletedrevisions']) \
+                   < params['adrlimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['adrlimit'] = self._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -259,7 +281,7 @@ based off of blob8108's original."
 
             if 'continue' in data:
                 last_cont = data['continue']
-                last_cont['aflimit'] = self._wraplimit(params['aflimit'])
+                last_cont['aflimit'] = self._wraplimit(params)
             else:
                 break
 
@@ -286,7 +308,7 @@ based off of blob8108's original."
 
             if 'continue' in data:
                 last_cont = data['continue']
-                last_cont['ailimit'] = self._wraplimit(params['ailimit'])
+                last_cont['ailimit'] = self._wraplimit(params)
             else:
                 break
 
@@ -312,7 +334,7 @@ based off of blob8108's original."
 
             if 'continue' in data:
                 last_cont = data['continue']
-                last_cont['allimit'] = self._wraplimit(params['allimit'])
+                last_cont['allimit'] = self._wraplimit(params)
             else:
                 break
 
@@ -339,7 +361,7 @@ based off of blob8108's original."
 
             if 'continue' in data:
                 last_cont = data['continue']
-                last_cont['aplimit'] = self._wraplimit(params['aplimit'])
+                last_cont['aplimit'] = self._wraplimit(params)
             else:
                 break
 
@@ -367,7 +389,7 @@ based off of blob8108's original."
 
             if 'continue' in data:
                 last_cont = data['continue']
-                last_cont['arlimit'] = self._wraplimit(params['arlimit'])
+                last_cont['arlimit'] = self._wraplimit(params)
             else:
                 break
 
@@ -394,7 +416,7 @@ based off of blob8108's original."
 
             if 'continue' in data:
                 last_cont = data['continue']
-                last_cont['arvlimit'] = self._wraplimit(params['arvlimit'])
+                last_cont['arvlimit'] = self._wraplimit(params)
             else:
                 break
 
@@ -422,7 +444,7 @@ based off of blob8108's original."
 
             if 'continue' in data:
                 last_cont = data['continue']
-                last_cont['atlimit'] = self._wraplimit(params['atlimit'])
+                last_cont['atlimit'] = self._wraplimit(params)
             else:
                 break
 
@@ -448,7 +470,7 @@ based off of blob8108's original."
 
             if 'continue' in data:
                 last_cont = data['continue']
-                last_cont['aulimit'] = self._wraplimit(params['aulimit'])
+                last_cont['aulimit'] = self._wraplimit(params)
             else:
                 break
 
@@ -479,7 +501,7 @@ based off of blob8108's original."
 
             if 'continue' in data:
                 last_cont = data['continue']
-                last_cont['bklimit'] = self._wraplimit(params['bklimit'])
+                last_cont['bklimit'] = self._wraplimit(params)
             else:
                 break
 
@@ -514,7 +536,7 @@ based off of blob8108's original."
 
             if 'continue' in data:
                 last_cont = data['continue']
-                last_cont['drlimit'] = self._wraplimit(params['drlimit'])
+                last_cont['drlimit'] = self._wraplimit(params)
             else:
                 break
 
@@ -545,7 +567,7 @@ based off of blob8108's original."
 
             if 'continue' in data:
                 last_cont = data['continue']
-                last_cont['eulimit'] = self._wraplimit(params['eulimit'])
+                last_cont['eulimit'] = self._wraplimit(params)
             else:
                 break
 
@@ -570,7 +592,7 @@ based off of blob8108's original."
 
             if 'continue' in data:
                 last_cont = data['continue']
-                last_cont['falimit'] = self._wraplimit(params['falimit'])
+                last_cont['falimit'] = self._wraplimit(params)
             else:
                 break
 
@@ -598,7 +620,7 @@ based off of blob8108's original."
 
             if 'continue' in data:
                 last_cont = data['continue']
-                last_cont['iwblimit'] = self._wraplimit(params['iwblimit'])
+                last_cont['iwblimit'] = self._wraplimit(params)
             else:
                 break
 
@@ -626,7 +648,7 @@ based off of blob8108's original."
 
             if 'continue' in data:
                 last_cont = data['continue']
-                last_cont['lbllimit'] = self._wraplimit(params['lbllimit'])
+                last_cont['lbllimit'] = self._wraplimit(params)
             else:
                 break
 
@@ -656,7 +678,7 @@ based off of blob8108's original."
 
             if 'continue' in data:
                 last_cont = data['continue']
-                last_cont['lelimit'] = self._wraplimit(params['leimit'])
+                last_cont['lelimit'] = self._wraplimit(params)
             else:
                 break
 
@@ -692,7 +714,7 @@ based off of blob8108's original."
 
             if 'continue' in data:
                 last_cont = data['continue']
-                last_cont['pwplimit'] = self._wraplimit(params['pwplimit'])
+                last_cont['pwplimit'] = self._wraplimit(params)
             else:
                 break
 
@@ -723,7 +745,7 @@ based off of blob8108's original."
 
             if 'continue' in data:
                 last_cont = data['continue']
-                last_cont['ptlimit'] = self._wraplimit(params['ptlimit'])
+                last_cont['ptlimit'] = self._wraplimit(params)
             else:
                 break
 
@@ -746,7 +768,7 @@ based off of blob8108's original."
 
             if 'continue' in data:
                 last_cont = data['continue']
-                last_cont['rnlimit'] = self._wraplimit(params['rnlimit'], 20)
+                last_cont['rnlimit'] = self._wraplimit(params)
             else:
                 break
 
@@ -795,18 +817,21 @@ class Page(object):
         page_data = list(data["query"]["pages"].values())[0]
         return page_data
 
+    _lasttimestamp = float('inf')
+
     def read(self):
         """Retrieve the page's content."""
         data = self.wiki.request(**{
             'action': "query",
             'titles': self.title,
             'prop': "revisions",
-            'rvprop': "content",
+            'rvprop': "content|timestamp",
             'rvlimit': "1",
         })
-        if length is not None:
-            return list(data['query']['pages'].values())[0]["revisions"][0]["*"][:length]
-        return list(data['query']['pages'].values())[0]['revisions'][0]['*']
+        data = list(data['query']['pages'].values())[0]['revisions'][0]
+        self._lasttimestamp = time.mktime(time.strptime(data['timestamp'],
+                                                        '%Y-%m-%dT%H:%M:%SZ'))
+        return data['*']
 
     def edit_token(self):
         """Retrieve an edit token for the page.
@@ -816,9 +841,17 @@ class Page(object):
         """
         return self.wiki.meta.tokens()
 
-    def edit(self, content, summary=None):
+    def edit(self, content, summary, erroronconflict=True):
         """Edit the page with the content content."""
+        
         token = self.wiki.meta.tokens()
+
+        rev = tuple(self.revisions(limit=1))
+        newtimestamp = time.mktime(time.striptime(rev[0].timestamp,
+                                                  '%Y-%m-%dT%H:%M:%SZ'))
+        if newtimestamp > self._lasttimestamp and erroronconflict:
+            raise EditConflict('The last fetch was before \
+the most recent revision.')
 
         return self.wiki.post_request(**{
             'action': "edit",
@@ -975,8 +1008,14 @@ class Page(object):
             for page in data["query"]["categorymembers"]:
                 yield Page(self.wiki, getinfo=getinfo, **page)
 
-            if "continue" in data:
-                last_cont = data["continue"]
+            if limit == 'max' \
+                   or len(data['query']['categorymembers']) \
+                   < params['cmlimit']:
+                if "continue" in data:
+                    last_cont = data["continue"]
+                    last_cont['cmlimit'] = self.wiki._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
