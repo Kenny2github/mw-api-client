@@ -70,25 +70,11 @@ class WikiError(Exception):
     """An arbitrary wiki error."""
     pass
 
-class PermissionDenied(WikiError):
-    """Permission is denied for that action."""
-    pass
-
-class MustBePosted(WikiError):
-    """You must POST some of the parameters in the request."""
-    pass
-
 class EditConflict(WikiError):
     """The last fetch of the page's content
     was before the most recent revision.
     """
     pass
-
-ERRORS = {
-    'permissiondenied': PermissionDenied,
-    'mustbeposted': MustBePosted,
-    'mustpostparams': MustBePosted,
-}
 
 class Wiki(object):
     """The base class for a wiki. Contains most API modules as methods."""
@@ -103,9 +89,9 @@ class Wiki(object):
         """
         self.api_url = api_url
         if user_agent is not None:
-            self.USER_AGENT = user_agent
+            self.user_agent = user_agent
         else:
-            self.USER_AGENT = "Python MediaWiki API Client, by Kenny2github, \
+            self.user_agent = "Python MediaWiki API Client, by Kenny2github, \
 based off of blob8108's original."
         self.meta = Meta(self)
         data = self.meta.siteinfo()
@@ -155,7 +141,7 @@ based off of blob8108's original."
         params["format"] = "json"
 
         headers = {
-            "User-Agent": self.USER_AGENT,
+            "User-Agent": self.user_agent,
         }
         headers.update(_headers if _headers is not None else {})
 
@@ -279,9 +265,14 @@ based off of blob8108's original."
             for page_data in data['query']['allfileusages']:
                 yield Page(self, getinfo=getinfo, **page_data)
 
-            if 'continue' in data:
-                last_cont = data['continue']
-                last_cont['aflimit'] = self._wraplimit(params)
+            if limit == 'max' \
+                   or len(data['query']['allfileusages']) \
+                   < params['aflimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['aflimit'] = self._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -306,9 +297,14 @@ based off of blob8108's original."
             for page_data in data['query']['allimages']:
                 yield Page(self, getinfo=getinfo, **page_data)
 
-            if 'continue' in data:
-                last_cont = data['continue']
-                last_cont['ailimit'] = self._wraplimit(params)
+            if limit == 'max' \
+                   or len(data['query']['allimages']) \
+                   < params['ailimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['ailimit'] = self._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -332,9 +328,14 @@ based off of blob8108's original."
             for page_data in data['query']['alllinks']:
                 yield Page(self, getinfo=getinfo, **page_data)
 
-            if 'continue' in data:
-                last_cont = data['continue']
-                last_cont['allimit'] = self._wraplimit(params)
+            if limit == 'max' \
+                   or len(data['query']['alllinks']) \
+                   < params['allimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['allimit'] = self._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -359,9 +360,14 @@ based off of blob8108's original."
             for page_data in data['query']['allpages']:
                 yield Page(self, getinfo=getinfo, **page_data)
 
-            if 'continue' in data:
-                last_cont = data['continue']
-                last_cont['aplimit'] = self._wraplimit(params)
+            if limit == 'max' \
+                   or len(data['query']['allpages']) \
+                   < params['aplimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['aplimit'] = self._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -387,9 +393,14 @@ based off of blob8108's original."
             for page_data in data['query']['allredirects']:
                 yield Page(self, getinfo=getinfo, **page_data)
 
-            if 'continue' in data:
-                last_cont = data['continue']
-                last_cont['arlimit'] = self._wraplimit(params)
+            if limit == 'max' \
+                   or len(data['query']['allredirects']) \
+                   < params['arlimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['arlimit'] = self._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -414,9 +425,14 @@ based off of blob8108's original."
                     yield Revision(self, Page(self, getinfo=getinfo, **page),
                                    **rev_data)
 
-            if 'continue' in data:
-                last_cont = data['continue']
-                last_cont['arvlimit'] = self._wraplimit(params)
+            if limit == 'max' \
+                   or len(data['query']['allrevisions']) \
+                   < params['arvlimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['arvlimit'] = self._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -442,9 +458,14 @@ based off of blob8108's original."
             for page_data in data['query']['alltransclusions']:
                 yield Page(self, getinfo=getinfo, **page_data)
 
-            if 'continue' in data:
-                last_cont = data['continue']
-                last_cont['atlimit'] = self._wraplimit(params)
+            if limit == 'max' \
+                   or len(data['query']['alltransclusions']) \
+                   < params['atlimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['atlimit'] = self._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -468,9 +489,14 @@ based off of blob8108's original."
             for user_data in data['query']['allusers']:
                 yield user_data
 
-            if 'continue' in data:
-                last_cont = data['continue']
-                last_cont['aulimit'] = self._wraplimit(params)
+            if limit == 'max' \
+                   or len(data['query']['allusers']) \
+                   < params['aulimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['aulimit'] = self._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -499,9 +525,14 @@ based off of blob8108's original."
             for block_data in data['query']['blocks']:
                 yield block_data
 
-            if 'continue' in data:
-                last_cont = data['continue']
-                last_cont['bklimit'] = self._wraplimit(params)
+            if limit == 'max' \
+                   or len(data['query']['blocks']) \
+                   < params['bklimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['bklimit'] = self._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -534,9 +565,14 @@ based off of blob8108's original."
                                    Page(self, getinfo=getinfo, **page),
                                    **rev_data)
 
-            if 'continue' in data:
-                last_cont = data['continue']
-                last_cont['drlimit'] = self._wraplimit(params)
+            if limit == 'max' \
+                   or len(data['query']['deletedrevs']) \
+                   < params['drlimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['drlimit'] = self._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -565,9 +601,14 @@ based off of blob8108's original."
             for page in data['query']['exturlusage']:
                 yield Page(self, getinfo=getinfo, **page)
 
-            if 'continue' in data:
-                last_cont = data['continue']
-                last_cont['eulimit'] = self._wraplimit(params)
+            if limit == 'max' \
+                   or len(data['query']['exturlusage']) \
+                   < params['eulimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['eulimit'] = self._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -590,9 +631,14 @@ based off of blob8108's original."
             for page in data['query']['filearchive']:
                 yield Page(self, getinfo=getinfo, **page)
 
-            if 'continue' in data:
-                last_cont = data['continue']
-                last_cont['falimit'] = self._wraplimit(params)
+            if limit == 'max' \
+                   or len(data['query']['filearchive']) \
+                   < params['falimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['falimit'] = self._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -618,9 +664,14 @@ based off of blob8108's original."
             for page in data['query']['iwbacklinks']:
                 yield Page(self, getinfo=getinfo, **page)
 
-            if 'continue' in data:
-                last_cont = data['continue']
-                last_cont['iwblimit'] = self._wraplimit(params)
+            if limit == 'max' \
+                   or len(data['query']['iwbacklinks']) \
+                   < params['iwblimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['iwblimit'] = self._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -646,9 +697,14 @@ based off of blob8108's original."
             for page in data['query']['langbacklinks']:
                 yield Page(self, getinfo=getinfo, **page)
 
-            if 'continue' in data:
-                last_cont = data['continue']
-                last_cont['lbllimit'] = self._wraplimit(params)
+            if limit == 'max' \
+                   or len(data['query']['langbacklinks']) \
+                   < params['lbllimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['lbllimit'] = self._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -676,9 +732,14 @@ based off of blob8108's original."
             for log_data in data['query']['logevents']:
                 yield log_data
 
-            if 'continue' in data:
-                last_cont = data['continue']
-                last_cont['lelimit'] = self._wraplimit(params)
+            if limit == 'max' \
+                   or len(data['query']['logevents']) \
+                   < params['lelimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['lelimit'] = self._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -712,9 +773,14 @@ based off of blob8108's original."
             for page in data['query']['pageswithprop']:
                 yield Page(self, getinfo=getinfo, **page)
 
-            if 'continue' in data:
-                last_cont = data['continue']
-                last_cont['pwplimit'] = self._wraplimit(params)
+            if limit == 'max' \
+                   or len(data['query']['pageswithprop']) \
+                   < params['pwplimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['pwplimit'] = self._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -743,9 +809,14 @@ based off of blob8108's original."
             for page in data['query']['protectedtitles']:
                 yield Page(self, getinfo=getinfo, **page)
 
-            if 'continue' in data:
-                last_cont = data['continue']
-                last_cont['ptlimit'] = self._wraplimit(params)
+            if limit == 'max' \
+                   or len(data['query']['protectedtitles']) \
+                   < params['ptlimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['ptlimit'] = self._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -766,9 +837,14 @@ based off of blob8108's original."
             for page in data['query']['random']:
                 yield Page(self, getinfo=getinfo, **page)
 
-            if 'continue' in data:
-                last_cont = data['continue']
-                last_cont['rnlimit'] = self._wraplimit(params)
+            if limit == 'max' \
+                   or len(data['query']['random']) \
+                   < params['rnlimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['rnlimit'] = self._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -843,12 +919,12 @@ class Page(object):
 
     def edit(self, content, summary, erroronconflict=True):
         """Edit the page with the content content."""
-        
+
         token = self.wiki.meta.tokens()
 
         rev = tuple(self.revisions(limit=1))
-        newtimestamp = time.mktime(time.striptime(rev[0].timestamp,
-                                                  '%Y-%m-%dT%H:%M:%SZ'))
+        newtimestamp = time.mktime(time.strptime(rev[0].timestamp,
+                                                 '%Y-%m-%dT%H:%M:%SZ'))
         if newtimestamp > self._lasttimestamp and erroronconflict:
             raise EditConflict('The last fetch was before \
 the most recent revision.')
@@ -863,7 +939,7 @@ the most recent revision.')
             'nocreate': 1,
         })
 
-    def replace(self, old_text, new_text=''):
+    def replace(self, old_text, new_text='', summary=None):
         """Replace each occurence of old_text in the page's source with
         new_text.
 
@@ -871,15 +947,37 @@ the most recent revision.')
         """
 
         if old_text and new_text:
-            summary = "Replace %s with %s" % (old_text, new_text)
+            edit_summary = "Automated edit: Replace {} with {}".format(old_text, new_text)
         elif old_text:
-            summary = "Remove %s" % old_text
+            edit_summary = "Automated edit: Remove {}".format(old_text)
         else:
             raise ValueError("old_text and new_text cannot both be empty.")
 
+        if summary is not None:
+            edit_summary = summary
+
         content = self.read()
         content = content.replace(old_text, new_text)
-        self.edit(content, summary)
+        self.edit(content, edit_summary)
+
+    def substitute(self, pattern, repl, flags=0, summary=None):
+        """Use a regex to substitute each occurence of pattern in the page's
+        source with repl.
+
+        Can raise normal re errors.
+        """
+
+        if not repl:
+            edit_summary = "Automated edit: Removed text"
+        else:
+            edit_summary = "Automated edit: Replaced text"
+
+        if summary is not None:
+            edit_summary = summary
+
+        content = self.read()
+        content = re.sub(pattern, repl, content, flags=flags)
+        self.edit(content, edit_summary)
 
     def revisions(self, limit="max", **kwargs):
         """Get a generator of Revisions for this page.
@@ -905,11 +1003,17 @@ the most recent revision.')
             params.update(last_cont)
             data = self.wiki.request(**params)
 
-            for rev_data in list(data['query']['pages'].values())[0]['revisions']:
-                yield Revision(self.wiki, self, **rev_data)
+            for revd in list(data['query']['pages'].values())[0]['revisions']:
+                yield Revision(self.wiki, self, **revd)
 
-            if 'continue' in data:
-                last_cont = data['continue']
+            if limit == 'max' \
+                   or len(list(data['query']['pages'].values())[0]['revisions'])\
+                   < params['rvlimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['rvlimit'] = self.wiki._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -937,8 +1041,14 @@ the most recent revision.')
             for rev_data in list(data['query']['deletedrevs'].values())[0]['revisions']:
                 yield Revision(self.wiki, self, **rev_data)
 
-            if 'continue' in data:
-                last_cont = data['continue']
+            if limit == 'max' \
+                   or len(data['query']['deletedrevs']) \
+                   < params['drlimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['drlimit'] = self.wiki._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -963,8 +1073,14 @@ the most recent revision.')
             for page_data in data["query"]["backlinks"]:
                 yield Page(self.wiki, getinfo=getinfo, **page_data)
 
-            if "continue" in data:
-                last_cont = data["continue"]
+            if limit == 'max' \
+                   or len(data['query']['backlinks']) \
+                   < params['bllimit']:
+                if "continue" in data:
+                    last_cont = data["continue"]
+                    last_cont['bllimit'] = self.wiki._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -984,8 +1100,14 @@ the most recent revision.')
             for page_data in data["query"]["embeddedin"]:
                 yield Page(self.wiki, getinfo=getinfo, **page_data)
 
-            if "continue" in data:
-                last_cont = data["continue"]
+            if limit == 'max' \
+                   or len(data['query']['embeddedin']) \
+                   < params['eilimit']:
+                if "continue" in data:
+                    last_cont = data["continue"]
+                    last_cont['eilimit'] = self.wiki._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
@@ -1040,8 +1162,13 @@ the most recent revision.')
             for page in data['query']['imageusage']:
                 yield Page(self.wiki, getinfo=getinfo, **page)
 
-            if 'continue' in data:
-                last_cont = data['continue']
+            if limit == 'max' \
+                   or len(data['query']['imageusage']) \
+                   < params['iulimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                else:
+                    break
             else:
                 break
 
@@ -1096,11 +1223,10 @@ class Revision(object):
 
         return list(data['query']['pages'].values())[0]['revisions'][0]['*']
 
-    def write(self, *dummy):
+    @staticmethod
+    def edit(*_, **__):
         """Dummy function to disable writing to content."""
         raise NotImplementedError('Cannot edit a revision of a page.')
-
-    content = property(read)
 
     def diff(self, revid="prev", difftext=None):
         """Retrieve an HTML diff to another revision (by default previous).
@@ -1154,7 +1280,7 @@ class Meta(object):
         data = self.wiki.request(**params)
         return data['query']['userinfo']
 
-    def allmessages(self, messages='*', args=None, prefix=None,
+    def allmessages(self, limit='max', messages='*', args=None,
                     getinfo=True, **kwargs):
         """Retrieve a list of all interface messages.
 
@@ -1172,7 +1298,7 @@ class Meta(object):
             'meta': 'allmessages',
             'ammessages': '|'.join(messages) if isinstance(messages, list) else messages,
             'amargs': '|'.join(args) if isinstance(args, list) else args,
-            'amprefix': prefix,
+            'amprefix': kwargs.get('prefix'),
         }
         params.update(kwargs)
 
@@ -1183,8 +1309,14 @@ class Meta(object):
             for page_data in data['query']['allmessages']:
                 yield Page(self.wiki, getinfo=getinfo, **page_data)
 
-            if 'continue' in data:
-                last_cont = data['continue']
+            if limit == 'max' \
+                   or len(data['query']['allmessages']) \
+                   < params['amlimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['amlimit'] = self.wiki._wraplimit(params)
+                else:
+                    break
             else:
                 break
 
