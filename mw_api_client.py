@@ -848,6 +848,28 @@ based off of blob8108's original."
             else:
                 break
 
+    def recentchanges(self, limit="max"):
+        pass
+
+    def users(self, names=None, justdata=False):
+        """Retrieve details of the specified users, and generate a list
+        of Users.
+        """
+        params = {
+            'action': 'query',
+            'list': 'users',
+            'ususers': names,
+            'usprop': 'blockinfo|groups|implicitgroups|rights|'
+                      + 'editcount|registration|emailable|gender',
+        }
+
+        data = self.request(**params)
+        if justdata:
+            return data['query']['users']
+        for userinfo in data['query']['users']:
+            yield User(self, currentuser=False, getinfo=False, **userinfo)
+        
+
 class Page(object):
     """The class for a page on a wiki.
 
@@ -1245,6 +1267,15 @@ class Revision(object):
         data = self.wiki.request(**params)
 
         return list(data['query']['pages'].values())[0]['revisions'][0]['diff']
+
+class User(object):
+    """A user on a wiki."""
+    def __init__(self, wiki, currentuser=False, getinfo=True, **userinfo):
+        """Initialize the instance with its wiki and update its info."""
+        self.wiki = wiki
+        self.name = None
+        self.__dict__.update(userinfo)
+        data = self.wiki.users(self.name, justdata=True) #TODO: make this work
 
 class Meta(object):
     """A separate class for the API "meta" module."""
