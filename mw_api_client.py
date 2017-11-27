@@ -152,7 +152,7 @@ based off of blob8108's original."
 
         assert response.ok
 
-        print(response.text)
+        #print(response.text)
         data = response.json()
 
         if 'error' in data:
@@ -339,7 +339,7 @@ based off of blob8108's original."
             else:
                 break
 
-    def allpages(self, limit="max", namespace="0", prefix=None, getinfo=True):
+    def allpages(self, limit="max", namespace=0, prefix=None, getinfo=True):
         """Retrieve a generator of all Pages.
 
         NOTE: This may take a long time on very large wikis!
@@ -959,6 +959,17 @@ the most recent revision.')
             'summary': summary,
             'bot': 1,
             'nocreate': 1,
+        })
+
+    def delete(self, reason):
+        token = self.wiki.meta.tokens()
+
+        return self.wiki.post_request(**{
+            'action': 'delete',
+            'pageid': self.pageid if hasattr(self, 'pageid') else None,
+            'title': self.title if not hasattr(self, 'pageid') else None,
+            'token': token,
+            'reason': reason,
         })
 
     def replace(self, old_text, new_text='', summary=None):
