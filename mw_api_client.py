@@ -175,6 +175,8 @@ based off of blob8108's original."
             'lgtoken': lgtoken
         }
         data = self.post_request(**params)['login']
+        self.currentuser = User(self, name=username,
+                                currentuser=True, getinfo=True)
         return data
 
     def page(self, title):
@@ -865,7 +867,9 @@ based off of blob8108's original."
 
         data = self.request(**params)
         if justdata:
-            return data['query']['users']
+            for userinfo in data['query']['users']:
+                yield userinfo
+            return
         for userinfo in data['query']['users']:
             yield User(self, currentuser=False, getinfo=False, **userinfo)
         
@@ -1285,14 +1289,31 @@ class User(object):
         """Initialize the instance with its wiki and update its info."""
         self.wiki = wiki
         self.name = None
+        self.currentuser = currentuser
         self.__dict__.update(userinfo)
-        data = self.wiki.users(self.name, justdata=True) #TODO: make this work
+        if getinfo:
+            data = self.wiki.users(self.name, justdata=True)
+            self.__dict__.update(tuple(data)[0])
+
+    def __repr__(self):
+        """Represent a User."""
+        if self.currentuser:
+            return '<Current User {un}>'.format(self.name)
+        return '<User {un}>'.format(self.name)
+
+    __str__ = __repr__
 
 class Meta(object):
     """A separate class for the API "meta" module."""
     def __init__(self, wiki):
         """Initialize the instance with its wiki."""
         self.wiki = wiki
+
+    def __repr__(self):
+        """Represent the Meta instance (there should only ever be one!)."""
+        return '<Meta>'
+
+    __str__ = __repr__
 
     def tokens(self, kind="csrf"):
         """Get a token for a database-modifying action.
