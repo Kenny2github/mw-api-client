@@ -176,7 +176,7 @@ based off of blob8108's original."
         }
         data = self.post_request(**params)['login']
         self.currentuser = User(self, name=username,
-                                currentuser=True, getinfo=True)
+                                currentuser=True, getinfo=False)
         return data
 
     def page(self, title):
@@ -185,7 +185,7 @@ based off of blob8108's original."
             return title
         return Page(self, title=title)
 
-    def allcategories(self, limit="max", prefix=None, getinfo=True):
+    def allcategories(self, limit="max", prefix=None, getinfo=False):
         """Retrieve a generator of all categories represented as Pages."""
         last_cont = {}
         params = {
@@ -246,7 +246,7 @@ based off of blob8108's original."
                 break
 
     def allfileusages(self, limit="max", prefix=None,
-                      unique=False, getinfo=True):
+                      unique=False, getinfo=False):
         """Retrieve a generator of Pages corresponding to all file usages."""
         last_cont = {}
         params = {
@@ -278,7 +278,7 @@ based off of blob8108's original."
             else:
                 break
 
-    def allimages(self, limit="max", prefix=None, mime=None, getinfo=True):
+    def allimages(self, limit="max", prefix=None, mime=None, getinfo=False):
         """Retrieve a generator of all images represented as Pages."""
         last_cont = {}
         params = {
@@ -311,7 +311,7 @@ based off of blob8108's original."
                 break
 
     def alllinks(self, limit="max", namespace='0',
-                 prefix=None, getinfo=True):
+                 prefix=None, getinfo=False):
         """Retrieve a generator of all links."""
         last_cont = {}
         params = {
@@ -341,7 +341,7 @@ based off of blob8108's original."
             else:
                 break
 
-    def allpages(self, limit="max", namespace=0, prefix=None, getinfo=True):
+    def allpages(self, limit="max", namespace=0, prefix=None, getinfo=False):
         """Retrieve a generator of all Pages.
 
         NOTE: This may take a long time on very large wikis!
@@ -374,7 +374,7 @@ based off of blob8108's original."
                 break
 
     def allredirects(self, limit="max", prefix=None,
-                     unique=False, getinfo=True):
+                     unique=False, getinfo=False):
         """Retrieve a generator of all Pages that are redirects."""
         last_cont = {}
         params = {
@@ -406,7 +406,7 @@ based off of blob8108's original."
             else:
                 break
 
-    def allrevisions(self, limit="max", getinfo=True, **kwargs):
+    def allrevisions(self, limit="max", getinfo=False, **kwargs):
         """Retrieve a generator of all revisions."""
         last_cont = {}
         params = {
@@ -439,7 +439,7 @@ based off of blob8108's original."
                 break
 
     def alltransclusions(self, limit="max", prefix=None,
-                         unique=False, getinfo=True):
+                         unique=False, getinfo=False):
         """Retrieve a generator of all transclusions."""
         last_cont = {}
         params = {
@@ -538,7 +538,7 @@ based off of blob8108's original."
             else:
                 break
 
-    def deletedrevs(self, limit="max", user=None, namespace=None, getinfo=True):
+    def deletedrevs(self, limit="max", user=None, namespace=None, getinfo=False):
         """Retrieve a generator of all deleted Revisions.
 
         This can be deleted user contributions (specify "user") or
@@ -579,7 +579,7 @@ based off of blob8108's original."
                 break
 
     def exturlusage(self, limit="max", url=None, protocol=None,
-                    getinfo=True, **kwargs):
+                    getinfo=False, **kwargs):
         """Retrieve a generator of Pages that link to a particular URL or
         protocol, or simply external links in general.
 
@@ -614,7 +614,7 @@ based off of blob8108's original."
             else:
                 break
 
-    def filearchive(self, limit="max", prefix=None, getinfo=True):
+    def filearchive(self, limit="max", prefix=None, getinfo=False):
         """Retrieve a generator of deleted files, represented as Pages."""
         last_cont = {}
         params = {
@@ -645,7 +645,7 @@ based off of blob8108's original."
                 break
 
     def interwikibacklinks(self, iwprefix, iwtitle=None,
-                           limit="max", getinfo=True):
+                           limit="max", getinfo=False):
         """Retrieve a generator of Pages that link to a particular
         interwiki prefix (and title, if specified)
         """
@@ -678,7 +678,7 @@ based off of blob8108's original."
                 break
 
     def languagebacklinks(self, langprefix, langtitle=None,
-                          limit="max", getinfo=True):
+                          limit="max", getinfo=False):
         """Retrieve a generator of Pages that link to a particular language
         code (and title, if specified)
         """
@@ -757,7 +757,7 @@ based off of blob8108's original."
         for prop in data['query']['pagepropnames']:
             yield prop['propname']
 
-    def pageswithprop(self, prop, limit="max", getinfo=True):
+    def pageswithprop(self, prop, limit="max", getinfo=False):
         """Retrieve a generator of Pages with a particular property."""
         last_cont = {}
         params = {
@@ -787,7 +787,7 @@ based off of blob8108's original."
                 break
 
     def protectedtitles(self, limit="max", level=None,
-                        namespace=None, getinfo=True):
+                        namespace=None, getinfo=False):
         """Retrieve a generator of Pages protected from creation.
 
         This means that all of the Pages returned will have the "missing"
@@ -822,7 +822,7 @@ based off of blob8108's original."
             else:
                 break
 
-    def random(self, limit="max", namespace=None, getinfo=True):
+    def random(self, limit="max", namespace=None, getinfo=False):
         """Retrieve a generator of random Pages."""
         last_cont = {}
         params = {
@@ -881,7 +881,7 @@ class Page(object):
 
     Pages with the "missing" attribute set evaluate to False.
     """
-    def __init__(self, wiki, getinfo=True, **data):
+    def __init__(self, wiki, getinfo=False, **data):
         """Initialize a page with its wiki and initially don't set a title.
 
         The Wiki class sets the title automatically, since the Page __init__
@@ -966,6 +966,9 @@ the most recent revision.')
         })
 
     def delete(self, reason):
+        """Delete this page. Note: this is NOT the same thing
+        as `del page`! `del` only unsets names, not objects.
+        """
         token = self.wiki.meta.tokens()
 
         return self.wiki.post_request(**{
@@ -974,6 +977,61 @@ the most recent revision.')
             'title': self.title if not hasattr(self, 'pageid') else None,
             'token': token,
             'reason': reason,
+        })
+
+    def move(self, newtitle, reason=None,
+             subpages=None, suppressredirect=None):
+        """Move this page to a new title."""
+        token = self.wiki.meta.tokens()
+
+        date = self.wiki.post_request(**{
+            'action': 'delete',
+            'pageid': self.pageid if hasattr(self, 'pageid') else None,
+            'title': self.title if not hasattr(self, 'pageid') else None,
+            'token': token,
+            'reason': reason,
+            'movesubpages': subpages,
+            'noredirect': suppressredirect,
+        })
+        self.title = newtitle #duh
+        return data
+
+    def protect(self, protections=None, expiry=None, reason=None, cascade=None):
+        """Protect this page from editing.
+
+        Format for `protections`:
+        A dict, containing action: level pairs, i.e. to restrict editing
+        to autoconfirmed users and restrict moving to admins, use:
+        {
+            'edit': 'autoconfirmed',
+            'move': 'systop'
+        }
+
+        Format for `expiry`:
+        A list, containing expiry timestamps corresponding to each action: level pair.
+        Following the previous example, to protect editing for a month
+        and moving indefinitely:
+        [
+            'next month',
+            'never'
+        ]
+
+        Specify `cascade` to make the protection cascading.
+        """
+        token = self.wiki.meta.tokens()
+
+        levels = '|'.join((k+'='+v for k, v in protections.items()))
+        expiries = '|'.join(expiry)
+
+        return self.post_request(**{
+            'action': 'protect',
+            'pageid': self.pageid if hasattr(self, 'pageid') else None,
+            'title': self.title if not hasattr(self, 'pageid') else None,
+            'token': token,
+            'protections': levels,
+            'expiry': expiries,
+            'reason': reason,
+            'cascade': cascade
         })
 
     def replace(self, old_text, new_text='', summary=None):
@@ -1094,7 +1152,7 @@ the most recent revision.')
         """Return an approximation of the canonical URL for the page."""
         return self.wiki.site_url + urlencode({"x": self.title})[2:].replace("%2F", "/")
 
-    def backlinks(self, limit="max", getinfo=True):
+    def backlinks(self, limit="max", getinfo=False):
         """Return a generator of Pages that link to this page."""
         last_cont = {}
         params = {
@@ -1121,7 +1179,7 @@ the most recent revision.')
             else:
                 break
 
-    def transclusions(self, limit="max", getinfo=True):
+    def transclusions(self, limit="max", getinfo=False):
         """Return a generator of Pages that transclude this page."""
         last_cont = {}
         params = {
@@ -1148,7 +1206,7 @@ the most recent revision.')
             else:
                 break
 
-    def categorymembers(self, limit="max", getinfo=True):
+    def categorymembers(self, limit="max", getinfo=False):
         """Return a generator of Pages in this category."""
         if not self.title.startswith("Category:"):
             raise ValueError('Page is not a category.')
@@ -1178,7 +1236,7 @@ the most recent revision.')
             else:
                 break
 
-    def imageusage(self, limit="max", namespace=None, getinfo=True):
+    def imageusage(self, limit="max", namespace=None, getinfo=False):
         """Return a generator of Pages that link to this image."""
         if not self.title.startswith("File:"):
             raise ValueError('Page is not a file')
@@ -1285,7 +1343,7 @@ class Revision(object):
 
 class User(object):
     """A user on a wiki."""
-    def __init__(self, wiki, currentuser=False, getinfo=True, **userinfo):
+    def __init__(self, wiki, currentuser=False, getinfo=False, **userinfo):
         """Initialize the instance with its wiki and update its info."""
         self.wiki = wiki
         self.name = None
@@ -1344,7 +1402,7 @@ class Meta(object):
         return data['query']['userinfo']
 
     def allmessages(self, limit='max', messages='*', args=None,
-                    getinfo=True, **kwargs):
+                    getinfo=False, **kwargs):
         """Retrieve a list of all interface messages.
 
         The "messages" parameter specifies what messages to retrieve (default all).
