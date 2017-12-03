@@ -115,7 +115,10 @@ based off of blob8108's original."
         data = data['paraminfo']['modules'][0]
         for param in data['parameters']:
             if param['name'] == 'limit':
-                wrap = param['highmax']
+                if 'apihighlimits' in getattr(self.currentuser, 'rights', ()):
+                    wrap = param['highmax']
+                else:
+                    wrap = param['max']
                 break
         limit = kwds[data['prefix'] + 'limit']
         if isinstance(limit, str):
@@ -190,7 +193,8 @@ based off of blob8108's original."
             params['filesize'] = fileobj_or_url.seek(0, 2)
             fileobj_or_url.seek(0)
             if bigfile:
-                raise NotImplementedError
+                raise NotImplementedError('Sorry, this has \
+not been implemented yet.')
             else:
                 files = {'file': fileobj_or_url}
                 return self.post_request(files=files, **params)
