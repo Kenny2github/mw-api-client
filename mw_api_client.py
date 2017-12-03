@@ -97,6 +97,7 @@ based off of blob8108's original."
         data = self.meta.siteinfo()
         self.wiki_url = data['server']
         self.site_url = data['server'] + data['articlepath'].replace('$1', '')
+        self.currentuser = None
 
     def __repr__(self):
         """Represent a Wiki object."""
@@ -133,7 +134,7 @@ based off of blob8108's original."
         else:
             raise TypeError('"limit" must be str or int, not ' + type(limit).__name__)
 
-    def request(self, _headers=None, _post=False, **params):
+    def request(self, _headers=None, _post=False, files=None, **params):
         """Inner request method.
 
         Remains public since it might be used per se.
@@ -146,11 +147,13 @@ based off of blob8108's original."
         headers.update(_headers if _headers is not None else {})
 
         if _post:
-            response = SESH.post(self.api_url, data=params, headers=headers)
+            response = SESH.post(self.api_url, data=params,
+                                 headers=headers, files=files)
         else:
-            response = SESH.get(self.api_url, params=params, headers=headers)
+            response = SESH.get(self.api_url, params=params,
+                                headers=headers, files=files)
 
-        assert response.ok
+        response.raise_for_status()
 
         #print(response.text)
         data = response.json()
@@ -160,6 +163,39 @@ based off of blob8108's original."
             raise WikiError(error['code'] + ': ' + error['info'])
 
         return data
+
+    def upload(self, fileobj_or_url, filename,
+               comment=None, bigfile=False):
+        """Upload a file.
+
+        `fileobj_or_url` must be a file(-like) object open in BYTES mode or
+        a canonical URL to a file to upload.
+        `filename` is the target filename (including extension).
+        `comment` is the upload comment, and is also the initial
+        content for the file description page.
+        If the file is particularly big, set `bigfile` to True to use
+        MediaWiki's multi-request file upload format.
+        """
+        token = self.meta.tokens()
+        params = {
+            'action': 'upload',
+            'filename': filename,
+            'comment': comment,
+            'token': token
+        }
+        if isinstance(fileobj_or_url, str):
+            params['url'] = fileobj_or_url
+            return self.post_request(**params)
+        else:
+            params['filesize'] = fileobj_or_url.seek(0, 2)
+            fileobj_or_url.seek(0)
+            if bigfile:
+                raise NotImplementedError
+            else:
+                files = {'file': fileobj_or_url}
+                return self.post_request(files=files, **params)
+
+################################################################################
 
     def post_request(self, **params):
         """Alias for Wiki.request(_post=True)"""
@@ -176,7 +212,7 @@ based off of blob8108's original."
         }
         data = self.post_request(**params)['login']
         self.currentuser = User(self, name=username,
-                                currentuser=True, getinfo=False)
+                                currentuser=True, getinfo=True)
         return data
 
     def page(self, title):
@@ -851,6 +887,7 @@ based off of blob8108's original."
                 break
 
     def recentchanges(self, limit="max"):
+        """Temp"""
         pass
 
     def users(self, names=None, justdata=False):
@@ -872,7 +909,7 @@ based off of blob8108's original."
             return
         for userinfo in data['query']['users']:
             yield User(self, currentuser=False, getinfo=False, **userinfo)
-        
+
 
 class Page(object):
     """The class for a page on a wiki.
@@ -917,6 +954,7 @@ class Page(object):
         }
         data = self.wiki.request(**arguments)
         page_data = list(data["query"]["pages"].values())[0]
+        self.__dict__.update(page_data)
         return page_data
 
     _lasttimestamp = float('inf')
@@ -948,8 +986,8 @@ class Page(object):
 
         token = self.wiki.meta.tokens()
 
-        rev = tuple(self.revisions(limit=1))
-        newtimestamp = time.mktime(time.strptime(rev[0].timestamp,
+        rev = tuple(self.revisions(limit=1))[0]
+        newtimestamp = time.mktime(time.strptime(rev.timestamp,
                                                  '%Y-%m-%dT%H:%M:%SZ'))
         if newtimestamp > self._lasttimestamp and erroronconflict:
             raise EditConflict('The last fetch was before \
@@ -971,10 +1009,16 @@ the most recent revision.')
         """
         token = self.wiki.meta.tokens()
 
+        if hasattr(self, 'pageid'):
+            return self.wiki.post_request(**{
+                'action': 'delete',
+                'pageid': self.pageid,
+                'token': token,
+                'reason': reason,
+            })
         return self.wiki.post_request(**{
             'action': 'delete',
-            'pageid': self.pageid if hasattr(self, 'pageid') else None,
-            'title': self.title if not hasattr(self, 'pageid') else None,
+            'title': self.title,
             'token': token,
             'reason': reason,
         })
@@ -984,17 +1028,20 @@ the most recent revision.')
         """Move this page to a new title."""
         token = self.wiki.meta.tokens()
 
-        date = self.wiki.post_request(**{
-            'action': 'delete',
-            'pageid': self.pageid if hasattr(self, 'pageid') else None,
-            'title': self.title if not hasattr(self, 'pageid') else None,
+        params = {
+            'action': 'move',
             'token': token,
             'reason': reason,
+            'to': newtitle,
             'movesubpages': subpages,
             'noredirect': suppressredirect,
-        })
+        }
+        if hasattr(self, 'pageid'):
+            params['fromid'] = self.pageid
+        else:
+            params['from'] = self.title
         self.title = newtitle #duh
-        return data
+        return self.wiki.post_request(**params)
 
     def protect(self, protections=None, expiry=None, reason=None, cascade=None):
         """Protect this page from editing.
@@ -1020,13 +1067,28 @@ the most recent revision.')
         """
         token = self.wiki.meta.tokens()
 
-        levels = '|'.join((k+'='+v for k, v in protections.items()))
-        expiries = '|'.join(expiry)
+        if protections:
+            levels = '|'.join((k+'='+v for k, v in protections.items()))
+        else:
+            levels = None
+        if expiry:
+            expiries = '|'.join(expiry)
+        else:
+            expiries = None
 
-        return self.post_request(**{
+        if hasattr(self, 'pageid'):
+            return self.wiki.post_request(**{
+                'action': 'protect',
+                'pageid': self.pageid,
+                'token': token,
+                'protections': levels,
+                'expiry': expiries,
+                'reason': reason,
+                'cascade': cascade
+            })
+        return self.wiki.post_request(**{
             'action': 'protect',
-            'pageid': self.pageid if hasattr(self, 'pageid') else None,
-            'title': self.title if not hasattr(self, 'pageid') else None,
+            'title': self.title,
             'token': token,
             'protections': levels,
             'expiry': expiries,
@@ -1356,10 +1418,56 @@ class User(object):
     def __repr__(self):
         """Represent a User."""
         if self.currentuser:
-            return '<Current User {un}>'.format(self.name)
-        return '<User {un}>'.format(self.name)
+            return '<Current User {un}>'.format(un=self.name)
+        return '<User {un}>'.format(un=self.name)
 
     __str__ = __repr__
+
+    def block(self, reason, expiry=None, **kwargs):
+        """Block this user.
+
+        See https://www.mediawiki.org/wiki/API:Block for details about kwargs.
+        """
+        token = self.wiki.meta.tokens()
+
+        params = {
+            'action': 'block',
+            'user': self.name,
+            'token': token,
+            'reason': reason,
+            'expiry': expiry
+        }
+        params.update(kwargs)
+
+        return self.wiki.post_request(**params)
+
+    def rights(self, add, remove, reason=None):
+        """Change user rights for this user.
+
+        `add` and `rem` can both be either a pipe-separated string
+        of group names, or an iterable of group names.
+        """
+        token = self.wiki.meta.tokens(kind='userrights')
+
+        params = {
+            'action': 'userrights',
+            'reason': reason,
+            'token': token
+        }
+        if hasattr(self, 'userid'):
+            params['userid'] = self.userid
+        else:
+            params['user'] = self.name
+        if isinstance(add, str):
+            params['add'] = add
+        else:
+            params['add'] = '|'.join(add)
+        if isinstance(remove, str):
+            params['remove'] = remove
+        else:
+            params['remove'] = '|'.join(remove)
+
+        return self.wiki.post_request(**params)
 
 class Meta(object):
     """A separate class for the API "meta" module."""
