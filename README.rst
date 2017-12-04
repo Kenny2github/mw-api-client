@@ -1,12 +1,6 @@
 A really simple MediaWiki API client.
 
-Can:
-
-* read pages
-* edit pages
-* list pages in category
-* list page backlinks ("what links here")
-* list page transclusions
+Can use most MediaWiki API modules.
 
 Requires the ``requests`` library.
 
@@ -15,16 +9,17 @@ http://www.mediawiki.org/
 
 Example Usage
 =============
+    import mw_api_client as mw
 
-Get a page::
+Get a page:
 
-    wiki = Wiki("https://en.wikipedia.org/", "wiki/", "w/api.php")
+    wp = mw.Wiki("https://en.wikipedia.org/w/api.php", "MyCoolBot/0.0.0")
 
-    wiki.login("kenny2wiki", password)
+    wp.login("kenny2wiki", password)
 
-    sandbox = wiki.page("User:Kenny2wiki/Sandbox")
+    sandbox = wp.page("User:Kenny2wiki/sandbox")
 
-Edit page::
+Edit page:
 
     # Get the page
     contents = sandbox.read()
@@ -36,25 +31,32 @@ Edit page::
     # Submit
     sandbox.edit(contents, summary)
 
-List pages in category::
+List pages in category:
 
-    for page in wiki.category_members("Redirects"):
+    for page in wp.category("Redirects").categorymembers():
         print page.title
 
-Remove all uses of a template::
+Remove all uses of a template:
 
-    target_pages = wiki.transclusions("Template:Stub")
+    stub = wp.template("Stub")
+
+    # Pages that transclude stub, main namespace only
+    target_pages = list(stub.transclusions(namespace=0))
 
     # Sort by title because it's prettier that way
-    target_pages.sort(key=lambda x: x.title)
-    
-    # Main namespace only
-    target_pages = [p for p in target_pages if p.query_info()['ns'] == 0]
-    
+    target_pages.sort(key=lambda p: p.title)
+
     for page in target_pages:
         page.replace("{{stub}}", "")
 
+Patrol all recent changes in the Help namespace:
 
-Made by Kenny2github, based on ~blob8108's MWAPI client for the Scratch Wiki.
+    rcs = wp.recentchanges(namespace=12)
+
+    for rc in rcs:
+        rc.patrol()
+
+
+Made by Kenny2github, based off of ~blob8108's Scratch Wiki API client.
 
 MIT Licensed.

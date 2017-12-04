@@ -1,9 +1,7 @@
 from setuptools import setup
-from mw_api_client import __doc__ as mwapi_doc
 
-with open('README.rst', 'w') as f:
-    f.write(mwapi_doc)
-    longdesc = mwapi_doc
+with open('README.rst', 'r') as f:
+    longdesc = f.read()
 
 setup(
     name="mw-api-client",

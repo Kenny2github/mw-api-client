@@ -1,7 +1,7 @@
 """
 A really simple MediaWiki API client.
 
-Can use most MediaWiki API modules as of 4/12/2017
+Can use most MediaWiki API modules.
 
 Requires the ``requests`` library.
 
@@ -10,15 +10,15 @@ http://www.mediawiki.org/
 
 Example Usage
 =============
-    import mw_api_client as mwapi
+    import mw_api_client as mw
 
 Get a page:
 
-    wiki = mwapi.Wiki("https://en.wikipedia.org/w/api.php")
+    wp = mw.Wiki("https://en.wikipedia.org/w/api.php", "MyCoolBot/0.0.0")
 
-    wiki.login("kenny2wiki", password)
+    wp.login("kenny2wiki", password)
 
-    sandbox = wiki.page("User:Kenny2wiki/sandbox")
+    sandbox = wp.page("User:Kenny2wiki/sandbox")
 
 Edit page:
 
@@ -34,12 +34,12 @@ Edit page:
 
 List pages in category:
 
-    for page in wiki.page("Category:Redirects").categorymembers():
+    for page in wp.category("Redirects").categorymembers():
         print page.title
 
 Remove all uses of a template:
 
-    stub = wiki.page("Template:Stub")
+    stub = wp.template("Stub")
 
     # Pages that transclude stub, main namespace only
     target_pages = list(stub.transclusions(namespace=0))
@@ -49,6 +49,13 @@ Remove all uses of a template:
 
     for page in target_pages:
         page.replace("{{stub}}", "")
+
+Patrol all recent changes in the Help namespace:
+
+    rcs = wp.recentchanges(namespace=12)
+
+    for rc in rcs:
+        rc.patrol()
 
 
 Made by Kenny2github, based off of ~blob8108's Scratch Wiki API client.
@@ -91,8 +98,7 @@ class Wiki(object):
         if user_agent is not None:
             self.user_agent = user_agent
         else:
-            self.user_agent = "Python MediaWiki API Client, by Kenny2github, \
-based off of blob8108's original."
+            self.user_agent = "mw_api_client/2.0.0, python-requests/>=2.18.4"
         self.meta = Meta(self)
         data = self.meta.siteinfo()
         self.wiki_url = data['server']
@@ -224,6 +230,22 @@ not been implemented yet.')
         if isinstance(title, Page):
             return title
         return Page(self, title=title)
+
+    def category(self, title):
+        """Return a Page instance based off of the title of the page
+        with `Category:` prepended.
+        """
+        if isinstance(title, Page):
+            return title
+        return Page(self, title='Category:' + title)
+
+    def template(self, title):
+        """Return a Page instance based off of the title of the page
+        with `Template:` prepended.
+        """
+        if isinstance(title, Page):
+            return title
+        return Page(self, title='Template:' + title)
 
     def allcategories(self, limit="max", prefix=None, getinfo=False):
         """Retrieve a generator of all categories represented as Pages."""
@@ -908,8 +930,8 @@ sha1|sizes|redirect|loginfo|tags|flags' + ('|patrolled' if 'patrol' in getattr(
             params.update(last_cont)
             data = self.request(**params)
 
-            for rc in data['query']['recentchanges']:
-                yield RecentChange(self, **rc)
+            for change in data['query']['recentchanges']:
+                yield RecentChange(self, **change)
 
             if limit == 'max' \
                    or len(data['query']['recentchanges']) \
@@ -933,7 +955,7 @@ sha1|sizes|redirect|loginfo|tags|flags' + ('|patrolled' if 'patrol' in getattr(
             'list': 'search',
             'srsearch': term,
             'srnamespace': namespace,
-            'srwhat': what,
+            'srwhat': 'title|text|nearmatch',
             'srprop': 'size|wordcount|timestamp|score|snippet|titlesnippet|\
 redirecttitle|redirectsnippet|sectiontitle|sectionsnippet',
             'srlimit': limit
@@ -1503,6 +1525,7 @@ class Revision(object):
         return list(data['query']['pages'].values())[0]['revisions'][0]['diff']
 
     def patrol(self):
+        """Patrol this revision."""
         token = self.wiki.meta.tokens(kind='patrol')
         return self.wiki.post_request(**{
             'action': 'patrol',
@@ -1513,14 +1536,17 @@ class Revision(object):
 class RecentChange(object):
     """A recent change. Used *specifically* for Wiki.recentchanges."""
     def __init__(self, wiki, **change):
+        """Initialize a recent change."""
         self.wiki = wiki
         self.rcid = None
         self.__dict__.update(change)
 
     def __repr__(self):
+        """Represent a recent change."""
         return "<Recent change id {rc}>".format(rc=self.rcid)
 
     def patrol(self):
+        """Patrol this recent change."""
         token = self.wiki.meta.tokens(kind='patrol')
         return self.wiki.post_request(**{
             'action': 'patrol',
@@ -1530,6 +1556,7 @@ class RecentChange(object):
 
     @property
     def info(self):
+        """Return a dict of information about this recent change."""
         return self.__dict__.copy()
 
 class Tag(object):
@@ -1537,16 +1564,24 @@ class Tag(object):
     recentchanges.
     """
     def __init__(self, wiki, **taginfo):
+        """Initialize a Tag."""
         self.wiki = wiki
         self.name = None
         self.__dict__.update(taginfo)
 
     def __repr__(self):
+        """Represent a Tag."""
         return "<Tag '{nam}'>".format(nam=self.name)
 
     def recentchanges(self, *args, **kwargs):
-        for rc in self.wiki.recentchanges(*args, rctag=self.name, **kwargs):
-            yield rc
+        """Get recent changes with this tag."""
+        for change in self.wiki.recentchanges(*args, rctag=self.name, **kwargs):
+            yield change
+
+    @property
+    def info(self):
+        """Return a dict of information about this Tag."""
+        return self.__dict__.copy()
 
 class User(object):
     """A user on a wiki."""
@@ -1559,6 +1594,8 @@ class User(object):
         if getinfo:
             data = self.wiki.users(self.name, justdata=True)
             self.__dict__.update(tuple(data)[0])
+            if currentuser:
+                self.__dict__.update(self.wiki.meta.userinfo())
 
     def __repr__(self):
         """Represent a User."""
@@ -1613,6 +1650,37 @@ class User(object):
             params['remove'] = '|'.join(remove)
 
         return self.wiki.post_request(**params)
+
+    def contribs(self, limit='max', namespace=None):
+        """Get contributions from this user."""
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'list': 'usercontribs',
+            'uclimit': limit,
+            'ucnamespace': namespace,
+            'ucprop': 'ids|title|timestamp|comment|parsedcomment|size|sizediff|\
+flags|tags' + '|patrolled' if 'patrol' in getattr(self.wiki.currentuser,
+                                                  []) else '',
+        }
+
+        while 1:
+            params.update(last_cont)
+            data = self.wiki.request(**params)
+
+            for rev in data['query']['usercontribs']:
+                yield Revision(self.wiki, self.wiki.page(rev['title']), **rev)
+
+            if limit == 'max' \
+                   or len(data['query']['usercontribs']) \
+                   < params['uclimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['uclimit'] = self.wiki._wraplimit(params)
+                else:
+                    break
+            else:
+                break
 
 class Meta(object):
     """A separate class for the API "meta" module."""
