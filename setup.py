@@ -1,11 +1,13 @@
 from setuptools import setup
+from mw_api_client import __doc__ as mwapi_doc
 
-with open('README.rst', 'r') as f:
-    longdesc = f.read()
+with open('README.rst', 'w') as f:
+    f.write(mwapi_doc)
+    longdesc = mwapi_doc
 
 setup(
     name="mw-api-client",
-    version="1.0.0a1",
+    version="2.0.0",
     description="A simple MediaWiki client.",
     long_description=longdesc,
     url="https://github.com/Kenny2github/mw-api-client",

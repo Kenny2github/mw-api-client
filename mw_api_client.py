@@ -1,7 +1,7 @@
 """
 A really simple MediaWiki API client.
 
-Can use all MediaWiki API modules as of 23/11/2017
+Can use most MediaWiki API modules as of 4/12/2017
 
 Requires the ``requests`` library.
 
@@ -39,13 +39,13 @@ List pages in category:
 
 Remove all uses of a template:
 
-    target_pages = list(wiki.page("Template:Stub").transclusions())
+    stub = wiki.page("Template:Stub")
+
+    # Pages that transclude stub, main namespace only
+    target_pages = list(stub.transclusions(namespace=0))
 
     # Sort by title because it's prettier that way
-    target_pages.sort(key=lambda x: x.title)
-
-    # Main namespace only
-    target_pages = [p for p in target_pages if p.ns == 0]
+    target_pages.sort(key=lambda p: p.title)
 
     for page in target_pages:
         page.replace("{{stub}}", "")
@@ -890,9 +890,100 @@ not been implemented yet.')
             else:
                 break
 
-    def recentchanges(self, limit="max"):
-        """Temp"""
-        pass
+    def recentchanges(self, limit=500, mostrecent=None, **kwargs):
+        """Retrieve recent changes on the wiki, a la Special:RecentChanges"""
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'list': 'recentchanges',
+            'rcprop': 'user|userid|comment|parsedcomment|timestamp|title|ids|\
+sha1|sizes|redirect|loginfo|tags|flags' + ('|patrolled' if 'patrol' in getattr(
+    self.currentuser, 'rights', []) else ''),
+            'rctoponly': mostrecent,
+            'rclimit': limit
+        }
+        params.update(kwargs)
+
+        while 1:
+            params.update(last_cont)
+            data = self.request(**params)
+
+            for rc in data['query']['recentchanges']:
+                yield RecentChange(self, **rc)
+
+            if limit == 'max' \
+                   or len(data['query']['recentchanges']) \
+                   < params['rclimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['rclimit'] = self._wraplimit(params)
+                else:
+                    break
+            else:
+                break
+
+    def search(self, term, limit=500, namespace=None, getinfo=False):
+        """Search page titles (or content, if `what` is 'text') for `term`.
+
+        Specify `namespace` to only search in that/those namespace(s).
+        """
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'list': 'search',
+            'srsearch': term,
+            'srnamespace': namespace,
+            'srwhat': what,
+            'srprop': 'size|wordcount|timestamp|score|snippet|titlesnippet|\
+redirecttitle|redirectsnippet|sectiontitle|sectionsnippet',
+            'srlimit': limit
+        }
+
+        while 1:
+            params.update(last_cont)
+            data = self.request(**params)
+
+            for result in data['query']['search']:
+                yield Page(self, getinfo=getinfo, **result)
+
+            if limit == 'max' \
+                   or len(data['query']['search']) \
+                   < params['srlimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['rclimit'] = self._wraplimit(params)
+                else:
+                    break
+            else:
+                break
+
+    def tags(self, limit='max'):
+        """Retrieve a generator of Tags on this wiki, a la Special:Tags."""
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'list': 'tags',
+            'tglimit': limit,
+            'tgprop': 'name|displayname|description|hitcount'
+        }
+
+        while 1:
+            params.update(last_cont)
+            data = self.request(**params)
+
+            for tagprop in data['query']['tags']:
+                yield Tag(self, **tagprop)
+
+            if limit == 'max' \
+                   or len(data['query']['tags']) \
+                   < params['tglimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['tglimit'] = self._wraplimit(params)
+                else:
+                    break
+            else:
+                break
 
     def users(self, names=None, justdata=False):
         """Retrieve details of the specified users, and generate a list
@@ -1245,7 +1336,7 @@ the most recent revision.')
             else:
                 break
 
-    def transclusions(self, limit="max", getinfo=False):
+    def transclusions(self, limit="max", namespace=None, getinfo=False):
         """Return a generator of Pages that transclude this page."""
         last_cont = {}
         params = {
@@ -1253,6 +1344,7 @@ the most recent revision.')
             'list': "embeddedin",
             'eilimit': limit,
             'eititle': self.title,
+            'einamespace': namespace,
         }
         while 1:
             params.update(last_cont)
@@ -1392,20 +1484,69 @@ class Revision(object):
     def diff(self, revid="prev", difftext=None):
         """Retrieve an HTML diff to another revision (by default previous).
 
-        Cannot diff to a revision ID and text at once.
+        Cannot diff to a revision ID and text at once - if difftext is
+        specified, it is assumed over revid.
         """
-        if revid is not None and difftext is not None:
-            raise ValueError('Cannot diff to revision ID and text at once.')
 
         params = {
             'action': 'query',
             'prop': 'revisions',
             'revids': self.revid,
-            'rvdiffto': revid,
         }
+        if difftext is not None:
+            params['rvdifftotext'] = difftext
+        else:
+            params['rvdiffto'] = revid
+
         data = self.wiki.request(**params)
 
         return list(data['query']['pages'].values())[0]['revisions'][0]['diff']
+
+    def patrol(self):
+        token = self.wiki.meta.tokens(kind='patrol')
+        return self.wiki.post_request(**{
+            'action': 'patrol',
+            'revid': self.revid,
+            'token': token
+        })
+
+class RecentChange(object):
+    """A recent change. Used *specifically* for Wiki.recentchanges."""
+    def __init__(self, wiki, **change):
+        self.wiki = wiki
+        self.rcid = None
+        self.__dict__.update(change)
+
+    def __repr__(self):
+        return "<Recent change id {rc}>".format(rc=self.rcid)
+
+    def patrol(self):
+        token = self.wiki.meta.tokens(kind='patrol')
+        return self.wiki.post_request(**{
+            'action': 'patrol',
+            'rcid': self.rcid,
+            'token': token
+        })
+
+    @property
+    def info(self):
+        return self.__dict__.copy()
+
+class Tag(object):
+    """A tag. Used for Wiki.tags, but can also be used for tag-specific
+    recentchanges.
+    """
+    def __init__(self, wiki, **taginfo):
+        self.wiki = wiki
+        self.name = None
+        self.__dict__.update(taginfo)
+
+    def __repr__(self):
+        return "<Tag '{nam}'>".format(nam=self.name)
+
+    def recentchanges(self, *args, **kwargs):
+        for rc in self.wiki.recentchanges(*args, rctag=self.name, **kwargs):
+            yield rc
 
 class User(object):
     """A user on a wiki."""
