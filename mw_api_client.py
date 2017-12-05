@@ -83,6 +83,10 @@ class EditConflict(WikiError):
     """
     pass
 
+class NotFound(WikiError):
+    """The page does not have any content."""
+    pass
+
 class Wiki(object):
     """The base class for a wiki. Contains most API modules as methods."""
 
@@ -225,11 +229,11 @@ not been implemented yet.')
                                 currentuser=True, getinfo=True)
         return data
 
-    def page(self, title):
+    def page(self, title, **kwargs):
         """Return a Page instance based off of the title of the page."""
         if isinstance(title, Page):
             return title
-        return Page(self, title=title)
+        return Page(self, title=title, **kwargs)
 
     def category(self, title):
         """Return a Page instance based off of the title of the page
@@ -237,7 +241,7 @@ not been implemented yet.')
         """
         if isinstance(title, Page):
             return title
-        return Page(self, title='Category:' + title)
+        return Page(self, title='Category:' + title, **kwargs)
 
     def template(self, title):
         """Return a Page instance based off of the title of the page
@@ -245,7 +249,7 @@ not been implemented yet.')
         """
         if isinstance(title, Page):
             return title
-        return Page(self, title='Template:' + title)
+        return Page(self, title='Template:' + title, **kwargs)
 
     def allcategories(self, limit="max", prefix=None, getinfo=False):
         """Retrieve a generator of all categories represented as Pages."""
@@ -772,7 +776,7 @@ not been implemented yet.')
             else:
                 break
 
-    def logevents(self, limit="max", title=None, user=None):
+    def logevents(self, limit="max", title=None, user=None, **kwargs):
         """Retrieve a generator of log events, each event being a dict.
 
         For more information on results, see:
@@ -788,6 +792,7 @@ not been implemented yet.')
             'letitle': title,
             'lelimit': limit
         }
+        params.update(kwargs)
 
         while 1:
             params.update(last_cont)
@@ -1085,7 +1090,13 @@ class Page(object):
             'rvprop': "content|timestamp",
             'rvlimit': "1",
         })
-        data = list(data['query']['pages'].values())[0]['revisions'][0]
+        try:
+            data = list(data['query']['pages'].values())[0]['revisions'][0]
+        except KeyError:
+            self.info()
+            if hasattr(self, 'missing'):
+                raise NotFound('The page does not exist.')
+            raise
         self._lasttimestamp = time.mktime(time.strptime(data['timestamp'],
                                                         '%Y-%m-%dT%H:%M:%SZ'))
         return data['*']
