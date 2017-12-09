@@ -193,6 +193,19 @@ class Wiki(object):
 
         return data
 
+    def checktoken(self, kind, token):
+        """Check the validity of a token. Returns True if valid,
+        False if invalid.
+        """
+        params = {
+            'action': 'checktoken',
+            'type': kind,
+            'token': csrf,
+        }
+        if self.request(**params)['checktoken']['result'] == 'invalid':
+            return False
+        return True
+
     def upload(self, fileobj_or_url, filename,
                comment=None, bigfile=False, **evil):
         """Upload a file.
@@ -265,6 +278,23 @@ not been implemented yet.')
         if isinstance(title, Page):
             return title
         return Page(self, title='Template:' + title, **kwargs)
+
+    def createaccount(self, name, reason, password=None,
+                      email=None, mailpassword=False):
+        token = self.meta.tokens(kind='createaccount')
+        params = {
+            'action': 'createaccount',
+            'token': token,
+            'email': email,
+            'reason': reason
+        }
+        if mailpassword:
+            if not email:
+                raise ValueError('`email` must be specified with mailpassword.')
+            params['mailpassword'] = True
+        else:
+            params['password'] = password
+        return self.post_request(**params)
 
     def allcategories(self, limit="max", prefix=None, getinfo=None, **evil):
         """Retrieve a generator of all categories represented as Pages."""
@@ -1177,6 +1207,9 @@ class Page(object):
 
         return self.wiki.post_request(**params)
 
+    def diff(self, topage=None, torev=None, totext=None, pst=False):
+        raise NotImplementedError #temp
+
     def delete(self, reason):
         """Delete this page. Note: this is NOT the same thing
         as `del page`! `del` only unsets names, not objects.
@@ -1311,6 +1344,23 @@ class Page(object):
         content = self.read()
         content = re.sub(pattern, repl, content, flags=flags)
         self.edit(content, edit_summary)
+
+    def categoryinfo(self):
+        """Get info about this category. Raises an error if this page
+        is not a category.
+        """
+        self.info()
+        if self.ns != 14:
+            raise ValueError('Page {} is not a category.'.format(self.title))
+        params = {
+            'action': 'query',
+            'prop': 'categoryinfo',
+            'titles': self.title,
+        }
+        data = self.wiki.request(**params)
+        data = list(data['query']['pages'].values())[0]
+        self.__dict__.update(data)
+        return data['categoryinfo']
 
     def revisions(self, limit="max", **kwargs):
         """Get a generator of Revisions for this page.
@@ -1749,6 +1799,10 @@ flags|tags' + '|patrolled' if 'patrol' in getattr(self.wiki.currentuser,
                     break
             else:
                 break
+
+    def clearhasmsg(self):
+        assert self.currentuser
+        self.wiki.request(**{'action': 'clearhasmsg'}, _format='none')
 
 class Meta(object):
     """A separate class for the API "meta" module."""
