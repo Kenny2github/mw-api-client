@@ -10,9 +10,14 @@ http://www.mediawiki.org/
 
 Example Usage
 =============
+
+.. code-block:: python
+
     import mw_api_client as mw
 
 Get a page:
+
+.. code-block:: python
 
     wp = mw.Wiki("https://en.wikipedia.org/w/api.php", "MyCoolBot/0.0.0")
 
@@ -21,6 +26,8 @@ Get a page:
     sandbox = wp.page("User:Kenny2wiki/sandbox")
 
 Edit page:
+
+.. code-block:: python
 
     # Get the page
     contents = sandbox.read()
@@ -34,10 +41,14 @@ Edit page:
 
 List pages in category:
 
+.. code-block:: python
+
     for page in wp.category("Redirects").categorymembers():
         print page.title
 
 Remove all uses of a template:
+
+.. code-block:: python
 
     stub = wp.template("Stub")
 
@@ -51,6 +62,8 @@ Remove all uses of a template:
         page.replace("{{stub}}", "")
 
 Patrol all recent changes in the Help namespace:
+
+.. code-block:: python
 
     rcs = wp.recentchanges(namespace=12)
 

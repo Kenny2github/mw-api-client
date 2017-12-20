@@ -1,7 +1,10 @@
 from setuptools import setup
+from re import match, S
 
-with open('README.rst', 'r') as f:
-    longdesc = f.read()
+with open('mw_api_client.py', 'r') as f:
+    longdesc = match('^"""(.*?)"""', f.read(), S).group(1)
+with open('README.rst', 'w') as f2:
+    f2.write(longdesc)
 
 setup(
     name="mw-api-client",
