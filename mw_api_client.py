@@ -131,7 +131,7 @@ class Wiki(object):
         else:
             self.user_agent = "mw_api_client/2.0.0, python-requests/>=2.18.4"
         self.meta = Meta(self)
-        self.session = requests.session()
+        self._session = requests.session()
         data = self.meta.siteinfo()
         self.wiki_url = data['server']
         self.site_url = data['server'] + data['articlepath'].replace('$1', '')
@@ -188,12 +188,21 @@ class Wiki(object):
         }
         headers.update(_headers if _headers is not None else {})
 
-        if _post:
-            response = self.session.post(self.api_url, data=params,
-                                         headers=headers, files=files)
-        else:
-            response = self.session.get(self.api_url, params=params,
-                                        headers=headers, files=files)
+        try:
+            if _post:
+                response = self._session.post(self.api_url, data=params,
+                                             headers=headers, files=files)
+            else:
+                response = self._session.get(self.api_url, params=params,
+                                            headers=headers, files=files)
+        except requests.exceptions.ConnectionError:
+            #try again as it may have been a one-time thing
+            if _post:
+                response = self._session.post(self.api_url, data=params,
+                                             headers=headers, files=files)
+            else:
+                response = self._session.get(self.api_url, data=params,
+                                            headers=headers, files=files)
 
         response.raise_for_status()
 
@@ -993,7 +1002,7 @@ not been implemented yet.')
             else:
                 break
 
-    def recentchanges(self, limit=500, mostrecent=None, **kwargs):
+    def recentchanges(self, limit=50, mostrecent=None, **kwargs):
         """Retrieve recent changes on the wiki, a la Special:RecentChanges"""
         last_cont = {}
         params = {
