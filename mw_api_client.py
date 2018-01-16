@@ -104,7 +104,7 @@ class WikiError(Exception):
     """An arbitrary wiki error."""
     pass
 
-class EditConflict(WikiError):
+class EditConflict(Exception):
     """The last fetch of the page's content
     was before the most recent revision.
     """
@@ -213,6 +213,11 @@ class Wiki(object):
             error = data['error']
             raise WikiError(error['code'] + ': ' + error['info'])
 
+        if 'warnings' in data:
+            warnings = data['warnings']
+            for module, value in warnings.items():
+                print('warning from', module, 'module:', value['*'])
+
         return data
 
     def checktoken(self, kind, token):
@@ -317,6 +322,39 @@ not been implemented yet.')
         else:
             params['password'] = password
         return self.post_request(**params)
+
+    def compare(self, original, new, pst=None, **evil):
+        params = {
+            'action': 'compare',
+            'frompst': pst,
+            'topst': pst,
+            'prop': 'diff',
+        }
+        if isinstance(original, Page):
+            if hasattr(original, 'pageid'): #prefer pageid over title
+                params['fromid'] = original.pageid
+            else:
+                params['fromtitle'] = original.title
+        elif isinstance(original, int):
+            params['fromrev'] = original
+        elif isinstance(original, str):
+            params['fromtext'] = original
+        else:
+            raise TypeError('Inappropriate argument type for `original`.')
+        if isinstance(new, Page):
+            if hasattr(new, 'pageid'):
+                params['toid'] = new.pageid
+            else:
+                params['totitle'] = new.title
+        elif isinstance(new, int):
+            params['torev'] = new
+        elif isinstance(new, str):
+            params['totext'] = new
+        else:
+            raise TypeError('Inappropriate argument type for `new`.')
+        params.update(evil)
+        data = self.request(**params)
+        return data['compare']['*']
 
     def allcategories(self, limit="max", prefix=None, getinfo=None, **evil):
         """Retrieve a generator of all categories represented as Pages."""
@@ -1229,9 +1267,6 @@ class Page(object):
 
         return self.wiki.post_request(**params)
 
-    def diff(self, topage=None, torev=None, totext=None, pst=False):
-        raise NotImplementedError #temp
-
     def delete(self, reason):
         """Delete this page. Note: this is NOT the same thing
         as `del page`! `del` only unsets names, not objects.
@@ -1520,6 +1555,7 @@ class Page(object):
                     break
             else:
                 break
+    embeddedin = transclusions
 
     def categorymembers(self, limit="max", getinfo=None, **evil):
         """Return a generator of Pages in this category."""
@@ -1580,6 +1616,39 @@ class Page(object):
                    < params['iulimit']:
                 if 'continue' in data:
                     last_cont = data['continue']
+                    last_cont['iulimit'] = self.wiki._wraplimit(params)
+                else:
+                    break
+            else:
+                break
+
+    def duplicatefiles(self, limit='max', getinfo=None, **evil):
+        """Generate duplicates of this file."""
+        if not self.title.startswith("File:"):
+            raise ValueError('Page is not a file')
+
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'list': 'imageusage',
+            'titles': self.title,
+            'dflimit': limit
+        }
+        params.update(evil)
+
+        while 1:
+            params.update(last_cont)
+            data = self.wiki.request(**params)
+
+            for page in list(data['query']['pages'].values())[0]['duplicatefiles']:
+                yield Page(self.wiki, getinfo=getinfo, title=page['name'])
+
+            if limit == 'max' \
+                   or len(list(data['query']['pages'].values())[0]['duplicatefiles']) \
+                   < params['dflimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['dflimit'] = self.wiki._wraplimit(params)
                 else:
                     break
             else:
@@ -1597,6 +1666,65 @@ class Page(object):
 
         for prop in data['query']['pagepropnames']:
             yield prop['propname']
+
+    def categories(self, limit='max', getinfo=None, **evil):
+        """Get a generator of all categories used on this page."""
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'titles': self.title,
+            'prop': 'categories',
+            'clprop': 'sortkey|timestamp|hidden',
+            'cllimit': limit
+        }
+        params.update(evil)
+
+        while 1:
+            params.update(last_cont)
+            data = self.wiki.request(**params)
+
+            for page in list(data['query']['pages'].values())[0]['categories']:
+                yield Page(self.wiki, getinfo=getinfo, **page)
+
+            if limit == 'max' \
+                   or len(list(data['query']['pages'].values())[0]['categories']) \
+                   < params['cllimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['cllimit'] = self.wiki._wraplimit(params)
+                else:
+                    break
+            else:
+                break
+
+    def contributors(limit='max', getinfo=None, **evil):
+        """Get a generator of contributors to this page."""
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'titles': self.title,
+            'prop': 'contributors',
+            'pclimit': limit
+        }
+        params.update(evil)
+
+        while 1:
+            params.update(last_cont)
+            data = self.wiki.request(**params)
+
+            for user in list(data['query']['pages'].values())[0]['contributors']:
+                yield User(self.wiki, getinfo=getinfo, **user)
+
+            if limit == 'max' \
+                   or len(list(data['query']['pages'].values())[0]['contributors']) \
+                   < params['pclimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['pclimit'] = self.wiki._wraplimit(params)
+                else:
+                    break
+            else:
+                break
 
 class Revision(object):
     """The class for a revision of a page.
@@ -1729,6 +1857,8 @@ class User(object):
         self.name = None
         self.currentuser = currentuser
         self.__dict__.update(userinfo)
+        if getinfo is None:
+            getinfo = GETINFO
         if getinfo:
             data = self.wiki.users(self.name, justdata=True)
             self.__dict__.update(tuple(data)[0])
