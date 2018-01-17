@@ -191,18 +191,18 @@ class Wiki(object):
         try:
             if _post:
                 response = self._session.post(self.api_url, data=params,
-                                             headers=headers, files=files)
+                                              headers=headers, files=files)
             else:
                 response = self._session.get(self.api_url, params=params,
-                                            headers=headers, files=files)
+                                             headers=headers, files=files)
         except requests.exceptions.ConnectionError:
             #try again as it may have been a one-time thing
             if _post:
                 response = self._session.post(self.api_url, data=params,
-                                             headers=headers, files=files)
+                                              headers=headers, files=files)
             else:
                 response = self._session.get(self.api_url, data=params,
-                                            headers=headers, files=files)
+                                             headers=headers, files=files)
 
         response.raise_for_status()
 
@@ -227,14 +227,14 @@ class Wiki(object):
         params = {
             'action': 'checktoken',
             'type': kind,
-            'token': csrf,
+            'token': token,
         }
         if self.request(**params)['checktoken']['result'] == 'invalid':
             return False
         return True
 
     def upload(self, fileobj_or_url, filename,
-               comment=None, bigfile=False, ignorewarnings=None, **evil):
+               comment=None, ignorewarnings=None, **evil):
         """Upload a file.
 
         `fileobj_or_url` must be a file(-like) object open in BYTES mode or
@@ -250,19 +250,35 @@ class Wiki(object):
             'action': 'upload',
             'filename': filename,
             'comment': comment,
-            'token': token
+            'token': token,
+            'ignorewarnings': ignorewarnings
         }
         params.update(evil)
         if isinstance(fileobj_or_url, str):
             params['url'] = fileobj_or_url
             return self.post_request(**params)
-        else:
-            if bigfile:
-                raise NotImplementedError('Sorry, bigfile has \
-not been implemented yet.')
-            else:
-                files = {'file': fileobj_or_url}
-                return self.post_request(files=files, **params)
+        files = {'file': fileobj_or_url}
+        return self.post_request(files=files, **params)
+
+    def import_(self, source, summary=None, iwpage=None,
+                namespace=None, rootpage=None):
+        """Import a page into the wiki.
+        `source` can either be a file object or an interwiki prefix.
+        """
+        token = self.meta.tokens()
+        params = {
+            'action': 'import',
+            'summary': summary,
+            'interwikipage': iwpage,
+            'namespace': namespace,
+            'rootpage': rootpage,
+            'token': token
+        }
+        if isinstance(source, str):
+            params['interwikisource'] = source
+            return self.post_request(**params)
+        files = {'xml': source}
+        return self.post_request(files=files, **params)
 
     def post_request(self, **params):
         """Alias for Wiki.request(_post=True)"""
@@ -282,33 +298,40 @@ not been implemented yet.')
                                 currentuser=True, getinfo=True)
         return data
 
-    def page(self, title, **kwargs):
+    def logout(self): #simple enough lol
+        """Log out the current user."""
+        self.currentuser = None
+        return self.post_request(**{'action': 'logout'})
+
+    def page(self, title, **evil):
         """Return a Page instance based off of the title of the page."""
         if isinstance(title, Page):
             return title
-        return Page(self, title=title, **kwargs)
+        return Page(self, title=title, **evil)
 
-    def category(self, title, **kwargs):
+    def category(self, title, **evil):
         """Return a Page instance based off of the title of the page
         with `Category:` prepended.
         """
         if isinstance(title, Page):
             return title
-        return Page(self, title='Category:' + title, **kwargs)
+        return Page(self, title='Category:' + title, **evil)
 
-    def template(self, title, **kwargs):
+    def template(self, title, **evil):
         """Return a Page instance based off of the title of the page
         with `Template:` prepended.
         """
         if isinstance(title, Page):
             return title
-        return Page(self, title='Template:' + title, **kwargs)
+        return Page(self, title='Template:' + title, **evil)
 
     def createaccount(self, name, reason, password=None,
                       email=None, mailpassword=False):
+        """Create an account."""
         token = self.meta.tokens(kind='createaccount')
         params = {
             'action': 'createaccount',
+            'username': name,
             'token': token,
             'email': email,
             'reason': reason
@@ -322,6 +345,7 @@ not been implemented yet.')
         return self.post_request(**params)
 
     def compare(self, original, new, pst=None, **evil):
+        """Compare two Pages, revision (ID)s, or texts."""
         params = {
             'action': 'compare',
             'frompst': pst,
@@ -354,7 +378,9 @@ not been implemented yet.')
         data = self.request(**params)
         return data['compare']['*']
 
-    def expandtemplates(self, text, title=None, revid=None, comments=False, **evil):
+    def expandtemplates(self, text, title=None, revid=None,
+                        comments=False, **evil):
+        """Expand all templates in the wikitext."""
         params = {
             'action': 'expandtemplates',
             'text': text,
@@ -364,9 +390,57 @@ not been implemented yet.')
         }
         if comments:
             params['includecomments'] = comments
+        params.update(evil)
 
         data = self.request(**params)
         return data['expandtemplates']['wikitext']
+
+    def managetags(self, operation, tag, reason=None, ignorewarnings=None):
+        """Manage tags."""
+        params = {
+            'action': 'managetags',
+            'operation': operation,
+            'tag': tag,
+            'reason': reason,
+            'ignorewarnings': ignorewarnings,
+            'token': self.meta.tokens()
+        }
+        return self.post_request(**params)
+
+    def mergehistory(self, source, target, maxtime=None, reason=None):
+        """Merge histories of two Pages."""
+        params = {
+            'action': 'mergehistory',
+            'reason': reason,
+            'token': self.meta.tokens()
+        }
+        if isinstance(source, Page):
+            if hasattr(source, 'pageid'):
+                params['fromid'] = source.pageid
+            else:
+                params['from'] = source.title
+        elif isinstance(source, str):
+            params['from'] = source
+        elif isinstance(source, int):
+            params['fromid'] = source
+        else:
+            raise TypeError('Inappropriate argument type for `source`.')
+        if isinstance(target, Page):
+            if hasattr(target, 'pageid'):
+                params['toid'] = target.pageid
+            else:
+                params['to'] = target.title
+        elif isinstance(target, str):
+            params['to'] = target
+        elif isinstance(target, int):
+            params['toid'] = target
+        else:
+            raise TypeError('Inappropriate argument type for `source`.')
+        if isinstance(maxtime, time.struct_time):
+            params['timestamp'] = time.strftime('%Y-%m-%dT%H:%M:%SZ', maxtime)
+        elif isinstance(maxtime, str):
+            params['timestamp'] = maxtime
+        return self.post_request(**params)
 
     def allcategories(self, limit="max", prefix=None, getinfo=None, **evil):
         """Retrieve a generator of all categories represented as Pages."""
@@ -874,6 +948,8 @@ not been implemented yet.')
             else:
                 break
 
+    iwbacklinks = interwikibacklinks
+
     def languagebacklinks(self, langprefix, langtitle=None,
                           limit="max", getinfo=None, **evil):
         """Retrieve a generator of Pages that link to a particular language
@@ -907,6 +983,8 @@ not been implemented yet.')
                     break
             else:
                 break
+
+    langbacklinks = languagebacklinks
 
     def logevents(self, limit="max", title=None, user=None, **evil):
         """Retrieve a generator of log events, each event being a dict.
@@ -1437,7 +1515,7 @@ class Page(object):
         See https://www.mediawiki.org/wiki/API:Revisions for explanations
         of the various parameters.
         """
-        if 'diffto' in kwargs and 'difftotext' in kwargs:
+        if 'diffto' in evil and 'difftotext' in evil:
             raise ValueError('Cannot diff to revision ID and text at once.')
 
         last_cont = {}
@@ -1538,7 +1616,120 @@ class Page(object):
             else:
                 break
 
+    linkshere = backlinks #literally what is the difference?
+
+    def interwikilinks(self, limit='max', fullurl=False, **evil):
+        """Generate all interwiki links used by this page. If fullurl
+        is specified, format is (prefix, title, url); otherwise it's
+        (prefix, title).
+        """
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'titles': self.title,
+            'prop': 'iwlinks',
+            'iwlimit': limit
+        }
+        if fullurl:
+            params['iwprop'] = 'url'
+        params.update(evil)
+
+        while 1:
+            params.update(last_cont)
+            data = self.wiki.request(**params)
+
+            for link in list(data['query']['pages'].values())[0]['iwlinks']:
+                if fullurl:
+                    yield (link['prefix'], link['*'], link['url'])
+                else:
+                    yield (link['prefix'], link['*'])
+
+            if limit == 'max' \
+                   or len(list(data['query']['pages'].values())[0]['iwlinks']) \
+                   < params['iwlimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['iwlimit'] = self.wiki._wraplimit(params)
+                else:
+                    break
+            else:
+                break
+
+    iwlinks = interwikilinks
+
+    def languagelinks(self, limit='max', fullurl=False, **evil):
+        """Generate all inter-language links used on this page.
+        The yield format is (prefix, title, url) if fullurl is specified,
+        otherwise it's (prefix, title).
+        """
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'titles': self.title,
+            'prop': 'languagelinks',
+            'lllimit': limit
+        }
+        if fullurl:
+            params['llprop'] = 'url'
+        params.update(evil)
+
+        while 1:
+            params.update(last_cont)
+            data = self.wiki.request(**params)
+
+            for link in list(data['query']['pages'].values())[0]['langlinks']:
+                if fullurl:
+                    yield (link['lang'], link['*'], link['url'])
+                else:
+                    yield (link['lang'], link['*'])
+
+            if limit == 'max' \
+                   or len(list(data['query']['pages'].values())[0]['langlinks']) \
+                   < params['lllimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['lllimit'] = self.wiki._wraplimit(params)
+                else:
+                    break
+            else:
+                break
+
+    langlinks = languagelinks
+
+    def links(self, limit='max', namespace=None, getinfo=None, **evil):
+        """Generate Pages that this Page links to."""
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'titles': self.title,
+            'prop': 'links',
+            'plnamespace': namespace,
+            'pllimit': limit
+        }
+        params.update(evil)
+
+        while 1:
+            params.update(last_cont)
+            data = self.wiki.request(**params)
+
+            for page in list(data['query']['pages'].values())[0]['links']:
+                yield Page(self.wiki, getinfo=getinfo, **page)
+
+            if limit == 'max' \
+               or len(list(data['query']['pages'].values())[0]['links']) \
+               < params['pllimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['pllimit'] = self.wiki._wraplimit(params)
+                else:
+                    break
+            else:
+                break
+
     def extlinks(self, limit='max', protocol=None, query=None, **evil):
+        """Generate all external links this Page uses. Yield format is
+        simply the URL.
+        """
         last_cont = {}
         params = {
             'action': 'query',
@@ -1702,6 +1893,7 @@ class Page(object):
                 break
 
     def images(self, limit='max', getinfo=None, **evil):
+        """Generate Pages based on what images this Page uses."""
         last_cont = {}
         params = {
             'action': 'query',
@@ -1774,6 +1966,16 @@ class Page(object):
         for prop in data['query']['pagepropnames']:
             yield prop['propname']
 
+    def pageprops(self):
+        """Return a dictionary of page properties for this page."""
+        params = {
+            'action': 'query',
+            'titles': self.title,
+            'prop': 'pageprops',
+        }
+        return list(self.wiki.request(**params)['query']['pages']
+                    .values())[0]['pageprops']
+
     def categories(self, limit='max', getinfo=None, **evil):
         """Get a generator of all categories used on this page."""
         last_cont = {}
@@ -1804,7 +2006,7 @@ class Page(object):
             else:
                 break
 
-    def contributors(limit='max', getinfo=None, **evil):
+    def contributors(self, limit='max', getinfo=None, **evil):
         """Get a generator of contributors to this page."""
         last_cont = {}
         params = {
@@ -2060,10 +2262,12 @@ flags|tags' + '|patrolled' if 'patrol' in getattr(self.wiki.currentuser,
                 break
 
     def clearhasmsg(self):
+        """Clear the "new message" notification. Must be current user."""
         assert self.currentuser
         self.wiki.request(**{'action': 'clearhasmsg'}, _format='none')
 
     def emailuser(self, target, body, subject=None, ccme=None):
+        """Email another user. Must be current user."""
         assert self.currentuser
         token = self.wiki.meta.tokens()
         return self.wiki.post_request(**{
@@ -2133,7 +2337,7 @@ class Meta(object):
             'meta': 'allmessages',
             'ammessages': '|'.join(messages) if isinstance(messages, list) else messages,
             'amargs': '|'.join(args) if isinstance(args, list) else args,
-            'amprefix': kwargs.get('prefix'),
+            'amprefix': evil.get('prefix'),
         }
         params.update(evil)
 

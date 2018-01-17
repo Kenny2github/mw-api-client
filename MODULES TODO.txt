@@ -1,34 +1,4 @@
-API:Import
-API:Info
-API:Information in Wikimedia projects
-API:Iwbacklinks
-API:Iwlinks
-API:JSON version 2
-API:Langbacklinks
-API:Langlinks
-API:Licensing
-API:Links
-API:Linkshere
-API:Lists
-API:Localisation
-API:Logevents
-API:Logging
-API:Login
-API:Logout
-API:Main module
-API:Main page
-API:Managetags
-API:Mergehistory
-API:Meta
-API:Move
-API:Oldreviewedpages
-API:Opensearch
 API:Options
-API:Other services
-API:Page info in search results
-API:Pagepropnames
-API:Pageprops
-API:Pageswithprop
 API:Pagetriagestats
 API:Parameter information
 API:Parsing wikitext
