@@ -1,24 +1,3 @@
-API:Emailuser
-API:Expandtemplates
-API:Extensions
-API:Extlinks
-API:Exturlusage
-API:FAQ
-API:Feedcontributions
-API:Feedrecentchanges
-API:Filearchive
-API:Filerepoinfo
-API:Filerevert
-API:Filetransform
-API:Fileusage
-API:Flagconfig
-API:Globalblocks
-API:Help
-API:Imageinfo
-API:Imagerotate
-API:Images
-API:Imageusage
-API:Implementation Strategy
 API:Import
 API:Info
 API:Information in Wikimedia projects

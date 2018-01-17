@@ -234,7 +234,7 @@ class Wiki(object):
         return True
 
     def upload(self, fileobj_or_url, filename,
-               comment=None, bigfile=False, **evil):
+               comment=None, bigfile=False, ignorewarnings=None, **evil):
         """Upload a file.
 
         `fileobj_or_url` must be a file(-like) object open in BYTES mode or
@@ -257,10 +257,8 @@ class Wiki(object):
             params['url'] = fileobj_or_url
             return self.post_request(**params)
         else:
-            params['filesize'] = fileobj_or_url.seek(0, 2)
-            fileobj_or_url.seek(0)
             if bigfile:
-                raise NotImplementedError('Sorry, this has \
+                raise NotImplementedError('Sorry, bigfile has \
 not been implemented yet.')
             else:
                 files = {'file': fileobj_or_url}
@@ -355,6 +353,20 @@ not been implemented yet.')
         params.update(evil)
         data = self.request(**params)
         return data['compare']['*']
+
+    def expandtemplates(self, text, title=None, revid=None, comments=False, **evil):
+        params = {
+            'action': 'expandtemplates',
+            'text': text,
+            'title': title,
+            'revid': revid,
+            'prop': 'wikitext'
+        }
+        if comments:
+            params['includecomments'] = comments
+
+        data = self.request(**params)
+        return data['expandtemplates']['wikitext']
 
     def allcategories(self, limit="max", prefix=None, getinfo=None, **evil):
         """Retrieve a generator of all categories represented as Pages."""
@@ -585,7 +597,7 @@ not been implemented yet.')
             else:
                 break
 
-    def allrevisions(self, limit="max", getinfo=None, **kwargs):
+    def allrevisions(self, limit="max", getinfo=None, **evil):
         """Retrieve a generator of all revisions."""
         last_cont = {}
         params = {
@@ -595,7 +607,7 @@ not been implemented yet.')
                        + 'comment|parsedcomment|tags',
             'arvlimit': limit
         }
-        params.update(kwargs)
+        params.update(evil)
 
         while 1:
             params.update(last_cont)
@@ -651,7 +663,7 @@ not been implemented yet.')
             else:
                 break
 
-    def allusers(self, limit="max", prefix=None, **kwargs):
+    def allusers(self, limit="max", prefix=None, **evil):
         """Retrieve a generator of all users, each item being a dict."""
         last_cont = {}
         params = {
@@ -662,7 +674,7 @@ not been implemented yet.')
             'auprop': 'blockinfo|groups|implicitgroups|rights|editcount'
                       + '|registration'
         }
-        params.update(kwargs)
+        params.update(evil)
 
         while 1:
             params.update(last_cont)
@@ -762,7 +774,7 @@ not been implemented yet.')
                 break
 
     def exturlusage(self, limit="max", url=None, protocol=None,
-                    getinfo=None, **kwargs):
+                    getinfo=None, **evil):
         """Retrieve a generator of Pages that link to a particular URL or
         protocol, or simply external links in general.
 
@@ -777,7 +789,7 @@ not been implemented yet.')
             'euprotocol': protocol,
             'eulimit': limit
         }
-        params.update(kwargs)
+        params.update(evil)
 
         while 1:
             params.update(last_cont)
@@ -896,7 +908,7 @@ not been implemented yet.')
             else:
                 break
 
-    def logevents(self, limit="max", title=None, user=None, **kwargs):
+    def logevents(self, limit="max", title=None, user=None, **evil):
         """Retrieve a generator of log events, each event being a dict.
 
         For more information on results, see:
@@ -912,7 +924,7 @@ not been implemented yet.')
             'letitle': title,
             'lelimit': limit
         }
-        params.update(kwargs)
+        params.update(evil)
 
         while 1:
             params.update(last_cont)
@@ -1040,7 +1052,7 @@ not been implemented yet.')
             else:
                 break
 
-    def recentchanges(self, limit=50, mostrecent=None, **kwargs):
+    def recentchanges(self, limit=50, mostrecent=None, **evil):
         """Retrieve recent changes on the wiki, a la Special:RecentChanges"""
         last_cont = {}
         params = {
@@ -1052,7 +1064,7 @@ sha1|sizes|redirect|loginfo|tags|flags' + ('|patrolled' if 'patrol' in getattr(
             'rctoponly': mostrecent,
             'rclimit': limit
         }
-        params.update(kwargs)
+        params.update(evil)
 
         while 1:
             params.update(last_cont)
@@ -1419,7 +1431,7 @@ class Page(object):
         self.__dict__.update(data)
         return data['categoryinfo']
 
-    def revisions(self, limit="max", **kwargs):
+    def revisions(self, limit="max", **evil):
         """Get a generator of Revisions for this page.
 
         See https://www.mediawiki.org/wiki/API:Revisions for explanations
@@ -1437,7 +1449,7 @@ class Page(object):
                       + 'comment|parsedcomment|tags',
             'rvlimit': limit
         }
-        params.update(kwargs)
+        params.update(evil)
 
         while 1:
             params.update(last_cont)
@@ -1457,7 +1469,7 @@ class Page(object):
             else:
                 break
 
-    def deletedrevs(self, limit="max", **kwargs):
+    def deletedrevs(self, limit="max", **evil):
         """Get a generator of deleted Revisions for this page.
 
         See https://www.mediawiki.org/wiki/API:Deletedrevs for explanations
@@ -1472,7 +1484,7 @@ class Page(object):
                       + 'len|sha1|tags',
             'drlimit': limit
         }
-        params.update(kwargs)
+        params.update(evil)
 
         while 1:
             params.update(last_cont)
@@ -1521,6 +1533,37 @@ class Page(object):
                 if "continue" in data:
                     last_cont = data["continue"]
                     last_cont['bllimit'] = self.wiki._wraplimit(params)
+                else:
+                    break
+            else:
+                break
+
+    def extlinks(self, limit='max', protocol=None, query=None, **evil):
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'titles': self.title,
+            'prop': 'extlinks',
+            'ellimit': limit,
+            'elprotocol': protocol,
+            'elquery': query,
+            'elexpandurl': True
+        }
+        params.update(evil)
+
+        while 1:
+            params.update(last_cont)
+            data = self.wiki.request(**params)
+
+            for link in list(data['query']['pages'].values())[0]['extlinks']:
+                yield link['*']
+
+            if limit == 'max' \
+                   or len(list(data['query']['pages'].values())[0]['extlinks']) \
+                   < params['ellimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['ellimit'] = self.wiki._wraplimit(params)
                 else:
                     break
             else:
@@ -1622,6 +1665,70 @@ class Page(object):
             else:
                 break
 
+    def fileusage(self, limit='max', namespace=None, getinfo=None, **evil):
+        """Generate Pages that link to this File. TODO: figure out what
+        the difference between this and imageusage is.
+        """
+        if not self.title.startswith('File:'):
+            raise ValueError('Page is not a file')
+
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'titles': self.title,
+            'prop': 'fileusage',
+            'fuprop': 'pageid|title|redirect',
+            'funamespace': namespace,
+            'fulimit': limit,
+        }
+        params.update(evil)
+
+        while 1:
+            params.update(last_cont)
+            data = self.wiki.request(**params)
+
+            for page in list(data['query']['pages'].values())[0]['fileusage']:
+                yield Page(self.wiki, getinfo=getinfo, **page)
+
+            if limit == 'max' \
+                   or len(list(data['query']['pages'].values())[0]['fileusage']) \
+                   < params['fulimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['fulimit'] = self.wiki._wraplimit(params)
+                else:
+                    break
+            else:
+                break
+
+    def images(self, limit='max', getinfo=None, **evil):
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'titles': self.title,
+            'prop': 'images',
+            'imlimit': limit
+        }
+        params.update(evil)
+
+        while 1:
+            params.update(last_cont)
+            data = self.wiki.request(**params)
+
+            for page in list(data['query']['pages'].values())[0]['images']:
+                yield Page(self.wiki, getinfo=getinfo, **page)
+
+            if limit == 'max' \
+                   or len(list(data['query']['pages'].values())[0]['images']) \
+                   < params['imlimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['imlimit'] = self.wiki._wraplimit(params)
+                else:
+                    break
+            else:
+                break
+
     def duplicatefiles(self, limit='max', getinfo=None, **evil):
         """Generate duplicates of this file."""
         if not self.title.startswith("File:"):
@@ -1630,7 +1737,7 @@ class Page(object):
         last_cont = {}
         params = {
             'action': 'query',
-            'list': 'imageusage',
+            'prop': 'duplicatefiles',
             'titles': self.title,
             'dflimit': limit
         }
@@ -1873,7 +1980,7 @@ class User(object):
 
     __str__ = __repr__
 
-    def block(self, reason, expiry=None, **kwargs):
+    def block(self, reason, expiry=None, **evil):
         """Block this user.
 
         See https://www.mediawiki.org/wiki/API:Block for details about kwargs.
@@ -1887,7 +1994,7 @@ class User(object):
             'reason': reason,
             'expiry': expiry
         }
-        params.update(kwargs)
+        params.update(evil)
 
         return self.wiki.post_request(**params)
 
@@ -1956,6 +2063,18 @@ flags|tags' + '|patrolled' if 'patrol' in getattr(self.wiki.currentuser,
         assert self.currentuser
         self.wiki.request(**{'action': 'clearhasmsg'}, _format='none')
 
+    def emailuser(self, target, body, subject=None, ccme=None):
+        assert self.currentuser
+        token = self.wiki.meta.tokens()
+        return self.wiki.post_request(**{
+            'action': 'emailuser',
+            'target': target.name if isinstance(target, User) else target,
+            'subject': subject,
+            'text': body,
+            'ccme': ccme,
+            'token': token
+        })['emailuser']['result']
+
 class Meta(object):
     """A separate class for the API "meta" module."""
     def __init__(self, wiki):
@@ -1997,7 +2116,7 @@ class Meta(object):
         return data['query']['userinfo']
 
     def allmessages(self, limit='max', messages='*', args=None,
-                    getinfo=None, **kwargs):
+                    getinfo=None, **evil):
         """Retrieve a list of all interface messages.
 
         The "messages" parameter specifies what messages to retrieve (default all).
@@ -2016,7 +2135,7 @@ class Meta(object):
             'amargs': '|'.join(args) if isinstance(args, list) else args,
             'amprefix': kwargs.get('prefix'),
         }
-        params.update(kwargs)
+        params.update(evil)
 
         while 1:
             params.update(last_cont)
