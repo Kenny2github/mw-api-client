@@ -497,7 +497,7 @@ class Wiki(object):
             else:
                 break
 
-    def alldeletedrevisions(self, limit="max", prefix=None, **evil):
+    def alldeletedrevisions(self, limit="max", prefix=None, getinfo=None, **evil):
         """Retrieve a generator of all deleted Revisions."""
         last_cont = {}
         params = {
@@ -514,8 +514,13 @@ class Wiki(object):
             params.update(last_cont)
             data = self.request(**params)
 
-            for rev_data in data['query']['alldeletedrevisions']:
-                yield Revision(self, **rev_data)
+            for page in data['query']['alldeletedrevisions']:
+                for rev in page['revisions']:
+                    yield Revision(self,
+                                   Page(self,
+                                        getinfo=getinfo,
+                                        **page),
+                                   **rev)
 
             if limit == 'max' \
                    or len(data['query']['alldeletedrevisions']) \
@@ -1537,7 +1542,7 @@ class Page(object):
         """Roll back all edits by the last user."""
         user = list(self.revisions(limit=1))[0].user
         params = {
-            'action': 'rollback'
+            'action': 'rollback',
             'title': None if hasattr(self, 'pageid') else self.title,
             'pageid': self.pageid if hasattr(self, 'pageid') else None,
             'user': user,
@@ -2296,7 +2301,8 @@ class RecentChange(object):
             'rcid': self.rcid,
             'add': '|'.join(add) if isinstance(add, list) else add,
             'remove': '|'.join(remove) if isinstance(remove, list) else remove,
-            'token': self.wiki.meta.tokens()
+            'token': self.wiki.meta.tokens(),
+            'reason': reason
         }
         return self.wiki.post_request(**params)
 
@@ -2434,7 +2440,8 @@ flags|tags' + '|patrolled' if 'patrol' in getattr(self.wiki.currentuser,
     def clearhasmsg(self):
         """Clear the "new message" notification. Must be current user."""
         assert self.currentuser
-        self.wiki.request(**{'action': 'clearhasmsg'}, _format='none')
+        self.wiki.request(_format='none',
+                          **{'action': 'clearhasmsg'})
 
     def emailuser(self, target, body, subject=None, ccme=None):
         """Email another user. Must be current user."""
