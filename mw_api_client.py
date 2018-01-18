@@ -395,6 +395,30 @@ class Wiki(object):
         data = self.request(**params)
         return data['expandtemplates']['wikitext']
 
+    def parse(self, source, title=None, **evil):
+        """Parse wikitext. `source` can be a string, Page,
+        or integer revision ID."""
+        params = {
+            'action': 'parse',
+            'redirects': True,
+            'prop': 'text',
+            'disablelimitreport': True,
+        }
+        if isinstance(source, str):
+            params['text'] = source
+            params['title'] = title
+        elif isinstance(source, Page):
+            if hasattr(source, 'pageid'):
+                params['pageid'] = source.pageid
+            else:
+                params['page'] = source.title
+        elif isinstance(source, int):
+            params['oldid'] = source
+        params.update(evil)
+
+        data = self.request(**params)
+        return data['parse']['text']['*']
+
     def managetags(self, operation, tag, reason=None, ignorewarnings=None):
         """Manage tags."""
         params = {
@@ -1377,6 +1401,15 @@ class Page(object):
             'reason': reason,
         })
 
+    def undelete(self, reason):
+        """Undelete this page, assuming it's already deleted :-)"""
+        return self.wiki.post_request(**{
+            'action': 'undelete',
+            'title': self.title,
+            'reason': reason,
+            'token': self.wiki.meta.tokens()
+        })
+
     def move(self, newtitle, reason=None,
              subpages=None, suppressredirect=None, **evil):
         """Move this page to a new title."""
@@ -1491,6 +1524,27 @@ class Page(object):
         content = self.read()
         content = re.sub(pattern, repl, content, flags=flags)
         self.edit(content, edit_summary)
+
+    def purge(self):
+        """Purge the cache of this page, forcing a re-parse of the contents."""
+        return self.wiki.post_request(**{
+            'action': 'purge',
+            'titles': None if hasattr(self, 'pageid') else self.title,
+            'pageids': self.pageid if hasattr(self, 'pageid') else None,
+        })
+
+    def rollback(self):
+        """Roll back all edits by the last user."""
+        user = list(self.revisions(limit=1))[0].user
+        params = {
+            'action': 'rollback'
+            'title': None if hasattr(self, 'pageid') else self.title,
+            'pageid': self.pageid if hasattr(self, 'pageid') else None,
+            'user': user,
+            'token': self.wiki.meta.tokens(kind='rollback'),
+            'markbot': True
+        }
+        return self.wiki.post_request(**params)
 
     def categoryinfo(self):
         """Get info about this category. Raises an error if this page
@@ -1617,6 +1671,36 @@ class Page(object):
                 break
 
     linkshere = backlinks #literally what is the difference?
+
+    def redirects(self, limit='max', namespace=None, getinfo=None, **evil):
+        """Generate redirects to this Page."""
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'titles': self.title,
+            'prop': 'redirects',
+            'rdlimit': limit,
+            'rdnamespace': namespace
+        }
+        params.update(evil)
+
+        while 1:
+            params.update(last_cont)
+            data = self.wiki.request(**params)
+
+            for page in list(data['query']['pages'].values())[0]['redirects']:
+                yield Page(self.wiki, getinfo=getinfo, **page)
+
+            if limit == 'max' \
+                   or len(list(data['query']['pages'].values())[0]['redirects']) \
+                   < params['rdlimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['rdlimit'] = self.wiki._wraplimit(params)
+                else:
+                    break
+            else:
+                break
 
     def interwikilinks(self, limit='max', fullurl=False, **evil):
         """Generate all interwiki links used by this page. If fullurl
@@ -1789,7 +1873,38 @@ class Page(object):
                     break
             else:
                 break
-    embeddedin = transclusions
+
+    embeddedin = transcludedin = transclusions #WHAT is the DIFFERENCE?
+
+    def templates(self, limit='max', namespace=None, getinfo=None, **evil):
+        """Generate Pages that this Page transcludes."""
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'titles': self.title,
+            'prop': 'templates',
+            'tlnamespace': namespace,
+            'tllimit': limit,
+        }
+        params.update(evil)
+
+        while 1:
+            params.update(last_cont)
+            data = self.wiki.request(**params)
+
+            for page in list(data['query']['pages'].values())[0]['templates']:
+                yield Page(self.wiki, getinfo=getinfo, **page)
+
+            if limit == 'max' \
+                   or len(list(data['query']['pages'].values())[0]['templates']) \
+                   < params['tllimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['tllimit'] = self.wiki._wraplimit(params)
+                else:
+                    break
+            else:
+                break
 
     def categorymembers(self, limit="max", getinfo=None, **evil):
         """Return a generator of Pages in this category."""
@@ -2108,6 +2223,43 @@ class Revision(object):
             'token': token
         })
 
+    def purge(self):
+        """Purge the cache of this revision, forcing a re-parse of the text."""
+        return self.wiki.post_request(**{
+            'action': 'purge',
+            'revids': self.revid,
+        })
+
+    def delete(self, contentshown=None, commentshown=None, usershown=None):
+        """Delete this revision.
+        Set `contentshown`, `commentshown`, and `usershown` to True to
+        unhide the content, comment, and user of this revision respectively.
+        Set them to False to hide them.
+        Set them to None to leave them unchanged."""
+        params = {
+            'action': 'revisiondelete',
+            'type': 'revision',
+            'target': self.page.title,
+            'ids': self.revid,
+            'token': self.wiki.meta.tokens()
+        }
+        show, hide = [], []
+        if contentshown is True:
+            show.append('content')
+        elif contentshown is False:
+            hide.append('content')
+        if commentshown is True:
+            show.append('comment')
+        elif commentshown is False:
+            hide.append('comment')
+        if usershown is True:
+            show.append('user')
+        elif usershown is False:
+            hide.append('user')
+        params['show'] = '|'.join(show)
+        params['hide'] = '|'.join(hide)
+        return self.post_request(**params)['revisiondelete']['status']
+
 class RecentChange(object):
     """A recent change. Used *specifically* for Wiki.recentchanges."""
     def __init__(self, wiki, **change):
@@ -2133,6 +2285,20 @@ class RecentChange(object):
     def info(self):
         """Return a dict of information about this recent change."""
         return self.__dict__.copy()
+
+    def tag(self, add=None, remove=None, reason=None):
+        """Apply (a) tag(s) to this recent change."""
+        if add is None and remove is None:
+            raise ValueError('Ya gotta be doing something...')
+
+        params = {
+            'action': 'tag',
+            'rcid': self.rcid,
+            'add': '|'.join(add) if isinstance(add, list) else add,
+            'remove': '|'.join(remove) if isinstance(remove, list) else remove,
+            'token': self.wiki.meta.tokens()
+        }
+        return self.wiki.post_request(**params)
 
 class Tag(object):
     """A tag. Used for Wiki.tags, but can also be used for tag-specific
@@ -2181,6 +2347,10 @@ class User(object):
         return '<User {un}>'.format(un=self.name)
 
     __str__ = __repr__
+
+    def __bool__(self):
+        """Returns the value of self.currentuser."""
+        return bool(self.currentuser)
 
     def block(self, reason, expiry=None, **evil):
         """Block this user.
@@ -2278,6 +2448,24 @@ flags|tags' + '|patrolled' if 'patrol' in getattr(self.wiki.currentuser,
             'ccme': ccme,
             'token': token
         })['emailuser']['result']
+
+    def resetpassword(self, capture=False):
+        """Reset this User's password. If `capture` is truthy, return the
+        temporary password that was sent instead of the reset status (requires
+        the `passwordreset` right).
+        """
+        token = self.wiki.meta.tokens()
+        params = {
+            'action': 'resetpassword',
+            'user': self.name,
+            'token': token
+        }
+        if capture:
+            params['capture'] = True
+        data = self.post_request(**params)
+        if capture:
+            return data['resetpassword']['passwords'][self.name]
+        return data['resetpassword']['status']
 
 class Meta(object):
     """A separate class for the API "meta" module."""
