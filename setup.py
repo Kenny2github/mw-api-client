@@ -8,7 +8,7 @@ with open('README.rst', 'w') as f2:
 
 setup(
     name="mw-api-client",
-    version="2.0.0",
+    version="2.1.0",
     description="A simple MediaWiki client.",
     long_description=longdesc,
     url="https://github.com/Kenny2github/mw-api-client",
@@ -19,7 +19,6 @@ setup(
         'Intended Audience :: Developers',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content :: Wiki',
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.6'
     ],
     keywords='mediawiki api requests',
