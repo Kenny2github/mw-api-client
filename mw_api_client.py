@@ -141,6 +141,14 @@ class Wiki(object):
         """Represent a Wiki object."""
         return "<Wiki at {addr}>".format(addr=self.wiki_url)
 
+    def __eq__(self, other):
+        """Check if two Wikis are equal."""
+        return self.wiki_url == other.wiki_url
+
+    def __hash__(self):
+        """Wiki.__hash__() <==> hash(Wiki)"""
+        return hash(self.wiki_url)
+
     __str__ = __repr__
 
     def _wraplimit(self, kwds):
@@ -1312,6 +1320,14 @@ class Page(object):
         """Represent a page instance."""
         return "<Page {name}>".format(name=self.title)
 
+    def __eq__(self, other):
+        """Check if two pages are the same."""
+        return self.title == other.title
+
+    def __hash__(self):
+        """Page.__hash__() <==> hash(Page)"""
+        return hash(self.title)
+
     __str__ = __repr__
 
     def info(self):
@@ -2180,6 +2196,14 @@ class Revision(object):
 
     __str__ = __repr__
 
+    def __eq__(self, other):
+        """Check if two revisions are the same."""
+        return self.revid == other.revid
+
+    def __hash__(self):
+        """Revision.__hash__() <==> hash(Revision)"""
+        return hash(self.revid)
+
     def read(self):
         """Retrieve the content of this revision."""
         params = {
@@ -2277,6 +2301,16 @@ class RecentChange(object):
         """Represent a recent change."""
         return "<Recent change id {rc}>".format(rc=self.rcid)
 
+    __str__ = __repr__
+
+    def __eq__(self, other):
+        """Check if two changes are the same."""
+        return self.rcid == other.rcid
+
+    def __hash__(self):
+        """RecentChange.__hash__() <==> hash(RecentChange)"""
+        return hash(self.rcid)
+
     def patrol(self):
         """Patrol this recent change."""
         token = self.wiki.meta.tokens(kind='patrol')
@@ -2320,6 +2354,16 @@ class Tag(object):
         """Represent a Tag."""
         return "<Tag '{nam}'>".format(nam=self.name)
 
+    __str__ = __repr__
+
+    def __eq__(self, other):
+        """Check if two tags are the same."""
+        return self.name == other.name
+
+    def __hash__(self):
+        """Tag.__hash__() <==> hash(Tag)"""
+        return hash(self.name)
+
     def recentchanges(self, *args, **kwargs):
         """Get recent changes with this tag."""
         for change in self.wiki.recentchanges(*args, rctag=self.name, **kwargs):
@@ -2353,6 +2397,14 @@ class User(object):
         return '<User {un}>'.format(un=self.name)
 
     __str__ = __repr__
+
+    def __eq__(self, other):
+        """Check if two users are the same."""
+        return self.name == other.name
+
+    def __hash__(self):
+        """User.__hash__() <==> hash(User)"""
+        return hash(self.name)
 
     def __bool__(self):
         """Returns the value of self.currentuser."""
