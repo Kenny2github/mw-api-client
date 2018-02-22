@@ -1342,6 +1342,8 @@ class Page(object):
         }
         data = self.wiki.request(**arguments)
         page_data = list(data["query"]["pages"].values())[0]
+        if 'title' in page_data:
+            del page_data['title'] #don't override the title
         self.__dict__.update(page_data)
         return page_data
 
