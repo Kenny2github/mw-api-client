@@ -56,7 +56,7 @@ List pages in category:
 .. code-block:: python
 
     for page in wp.category("Redirects").categorymembers():
-        print page.title
+        print(page.title)
 
 Remove all uses of a template:
 
