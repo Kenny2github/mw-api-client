@@ -2,7 +2,7 @@ from __future__ import print_function
 import time
 import requests
 from .page import *
-from .user import *
+from .revn import *
 from .excs import *
 from .misc import *
 from . import GETINFO

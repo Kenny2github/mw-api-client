@@ -1,92 +1,3 @@
-"""
-A really simple MediaWiki API client.
-
-Can use most MediaWiki API modules.
-
-Requires the ``requests`` library.
-
-http://www.mediawiki.org/
-
-Installation
-============
-
-To install the latest stable version::
-
-    pip install -U mw-api-client
-
-To install the latest development version::
-
-    git clone https://github.com/Kenny2github/mw-api-client.git
-    cd mw-api-client
-    pip install -e .
-
-Example Usage
-=============
-
-.. code-block:: python
-
-    import mw_api_client as mw
-
-Get a page:
-
-.. code-block:: python
-
-    wp = mw.Wiki("https://en.wikipedia.org/w/api.php", "MyCoolBot/0.0.0")
-
-    wp.login("kenny2wiki", password)
-
-    sandbox = wp.page("User:Kenny2wiki/sandbox")
-
-Edit page:
-
-.. code-block:: python
-
-    # Get the page
-    contents = sandbox.read()
-
-    # Change
-    contents += "\n This is a test!"
-    summary = "Made a test edit"
-
-    # Submit
-    sandbox.edit(contents, summary)
-
-List pages in category:
-
-.. code-block:: python
-
-    for page in wp.category("Redirects").categorymembers():
-        print(page.title)
-
-Remove all uses of a template:
-
-.. code-block:: python
-
-    stub = wp.template("Stub")
-
-    # Pages that transclude stub, main namespace only
-    target_pages = list(stub.transclusions(namespace=0))
-
-    # Sort by title because it's prettier that way
-    target_pages.sort(key=lambda p: p.title)
-
-    for page in target_pages:
-        page.replace("{{stub}}", "")
-
-Patrol all recent changes in the Help namespace:
-
-.. code-block:: python
-
-    rcs = wp.recentchanges(namespace=12)
-
-    for rc in rcs:
-        rc.patrol()
-
-
-Made by Kenny2github, based off of ~blob8108's Scratch Wiki API client.
-
-MIT Licensed.
-"""
 from __future__ import print_function
 try:
     from urllib.parse import urlencode
@@ -94,22 +5,8 @@ except ImportError:
     from urllib import urlencode
 import re
 import time
-
-GETINFO = False #for convenience
-
-__all__ = [
-    'GETINFO',
-    'WikiError',
-    'EditConflict',
-    'Wiki',
-    'Page',
-    'User',
-    'Revision',
-    'RecentChange',
-    'Meta',
-    'Tag'
-]
-
+from .excs import EditConflict
+from . import GETINFO
 
 class Page(object):
     """The class for a page on a wiki.
@@ -984,8 +881,8 @@ class Page(object):
             params.update(last_cont)
             data = self.wiki.request(**params)
 
-            for user in list(data['query']['pages'].values())[0]['contributors']:
-                yield User(self.wiki, getinfo=getinfo, **user)
+            for usr in list(data['query']['pages'].values())[0]['contributors']:
+                yield User(self.wiki, getinfo=getinfo, **usr)
 
             if limit == 'max' \
                    or len(list(data['query']['pages'].values())[0]['contributors']) \
@@ -997,6 +894,158 @@ class Page(object):
                     break
             else:
                 break
+
+class User(object):
+    """A user on a wiki."""
+    def __init__(self, wiki, currentuser=False, getinfo=None, **userinfo):
+        """Initialize the instance with its wiki and update its info."""
+        self.wiki = wiki
+        self.name = None
+        self.currentuser = currentuser
+        self.__dict__.update(userinfo)
+        if getinfo is None:
+            getinfo = GETINFO
+        if getinfo:
+            data = self.wiki.users(self.name, justdata=True)
+            self.__dict__.update(tuple(data)[0])
+            if currentuser:
+                self.__dict__.update(self.wiki.meta.userinfo())
+
+    def __repr__(self):
+        """Represent a User."""
+        if self.currentuser:
+            return '<Current User {un}>'.format(un=self.name)
+        return '<User {un}>'.format(un=self.name)
+
+    __str__ = __repr__
+
+    def __eq__(self, other):
+        """Check if two users are the same."""
+        return self.name == other.name
+
+    def __hash__(self):
+        """User.__hash__() <==> hash(User)"""
+        return hash(self.name)
+
+    def __bool__(self):
+        """Returns the value of self.currentuser."""
+        return bool(self.currentuser)
+
+    def block(self, reason, expiry=None, **evil):
+        """Block this user.
+
+        See https://www.mediawiki.org/wiki/API:Block for details about kwargs.
+        """
+        token = self.wiki.meta.tokens()
+
+        params = {
+            'action': 'block',
+            'user': self.name,
+            'token': token,
+            'reason': reason,
+            'expiry': expiry
+        }
+        params.update(evil)
+
+        return self.wiki.post_request(**params)
+
+    def rights(self, add, remove, reason=None, **evil):
+        """Change user rights for this user.
+
+        `add` and `rem` can both be either a pipe-separated string
+        of group names, or an iterable of group names.
+        """
+        token = self.wiki.meta.tokens(kind='userrights')
+
+        params = {
+            'action': 'userrights',
+            'reason': reason,
+            'token': token
+        }
+        if hasattr(self, 'userid'):
+            params['userid'] = self.userid
+        else:
+            params['user'] = self.name
+        if isinstance(add, str):
+            params['add'] = add
+        else:
+            params['add'] = '|'.join(add)
+        if isinstance(remove, str):
+            params['remove'] = remove
+        else:
+            params['remove'] = '|'.join(remove)
+        params.update(evil)
+
+        return self.wiki.post_request(**params)
+
+    def contribs(self, limit='max', namespace=None, **evil):
+        """Get contributions from this user."""
+        last_cont = {}
+        params = {
+            'action': 'query',
+            'list': 'usercontribs',
+            'uclimit': limit,
+            'ucnamespace': namespace,
+            'ucprop': 'ids|title|timestamp|comment|parsedcomment|size|sizediff|\
+    flags|tags' + '|patrolled' if 'patrol' in getattr(self.wiki.currentuser,
+                                                  []) else '',
+        }
+        params.update(evil)
+
+        while 1:
+            params.update(last_cont)
+            data = self.wiki.request(**params)
+
+            for rev in data['query']['usercontribs']:
+                yield Revision(self.wiki, self.wiki.page(rev['title']), **rev)
+
+            if limit == 'max' \
+                   or len(data['query']['usercontribs']) \
+                   < params['uclimit']:
+                if 'continue' in data:
+                    last_cont = data['continue']
+                    last_cont['uclimit'] = self.wiki._wraplimit(params)
+                else:
+                    break
+            else:
+                break
+
+    def clearhasmsg(self):
+        """Clear the "new message" notification. Must be current user."""
+        assert self.currentuser
+        self.wiki.request(_format='none',
+                          **{'action': 'clearhasmsg'})
+
+    def emailuser(self, target, body, subject=None, ccme=None):
+        """Email another user. Must be current user."""
+        assert self.currentuser
+        token = self.wiki.meta.tokens()
+        return self.wiki.post_request(**{
+            'action': 'emailuser',
+            'target': target.name if isinstance(target, User) else target,
+            'subject': subject,
+            'text': body,
+            'ccme': ccme,
+            'token': token
+        })['emailuser']['result']
+
+    def resetpassword(self, capture=False):
+        """Reset this User's password. If `capture` is truthy, return the
+        temporary password that was sent instead of the reset status (requires
+        the `passwordreset` right).
+        """
+        token = self.wiki.meta.tokens()
+        params = {
+            'action': 'resetpassword',
+            'user': self.name,
+            'token': token
+        }
+        if capture:
+            params['capture'] = True
+        data = self.post_request(**params)
+        if capture:
+            return data['resetpassword']['passwords'][self.name]
+        return data['resetpassword']['status']
 
 class Revision(object):
     """The class for a revision of a page.
@@ -1115,354 +1164,3 @@ class Revision(object):
         params['show'] = '|'.join(show)
         params['hide'] = '|'.join(hide)
         return self.post_request(**params)['revisiondelete']['status']
-
-class RecentChange(object):
-    """A recent change. Used *specifically* for Wiki.recentchanges."""
-    def __init__(self, wiki, **change):
-        """Initialize a recent change."""
-        self.wiki = wiki
-        self.rcid = None
-        self.__dict__.update(change)
-
-    def __repr__(self):
-        """Represent a recent change."""
-        return "<Recent change id {rc}>".format(rc=self.rcid)
-
-    __str__ = __repr__
-
-    def __eq__(self, other):
-        """Check if two changes are the same."""
-        return self.rcid == other.rcid
-
-    def __hash__(self):
-        """RecentChange.__hash__() <==> hash(RecentChange)"""
-        return hash(self.rcid)
-
-    def patrol(self):
-        """Patrol this recent change."""
-        token = self.wiki.meta.tokens(kind='patrol')
-        return self.wiki.post_request(**{
-            'action': 'patrol',
-            'rcid': self.rcid,
-            'token': token
-        })
-
-    @property
-    def info(self):
-        """Return a dict of information about this recent change."""
-        return self.__dict__.copy()
-
-    def tag(self, add=None, remove=None, reason=None):
-        """Apply (a) tag(s) to this recent change."""
-        if add is None and remove is None:
-            raise ValueError('Ya gotta be doing something...')
-
-        params = {
-            'action': 'tag',
-            'rcid': self.rcid,
-            'add': '|'.join(add) if isinstance(add, list) else add,
-            'remove': '|'.join(remove) if isinstance(remove, list) else remove,
-            'token': self.wiki.meta.tokens(),
-            'reason': reason
-        }
-        return self.wiki.post_request(**params)
-
-class Tag(object):
-    """A tag. Used for Wiki.tags, but can also be used for tag-specific
-    recentchanges.
-    """
-    def __init__(self, wiki, **taginfo):
-        """Initialize a Tag."""
-        self.wiki = wiki
-        self.name = None
-        self.__dict__.update(taginfo)
-
-    def __repr__(self):
-        """Represent a Tag."""
-        return "<Tag '{nam}'>".format(nam=self.name)
-
-    __str__ = __repr__
-
-    def __eq__(self, other):
-        """Check if two tags are the same."""
-        return self.name == other.name
-
-    def __hash__(self):
-        """Tag.__hash__() <==> hash(Tag)"""
-        return hash(self.name)
-
-    def recentchanges(self, *args, **kwargs):
-        """Get recent changes with this tag."""
-        for change in self.wiki.recentchanges(*args, rctag=self.name, **kwargs):
-            yield change
-
-    @property
-    def info(self):
-        """Return a dict of information about this Tag."""
-        return self.__dict__.copy()
-
-class User(object):
-    """A user on a wiki."""
-    def __init__(self, wiki, currentuser=False, getinfo=None, **userinfo):
-        """Initialize the instance with its wiki and update its info."""
-        self.wiki = wiki
-        self.name = None
-        self.currentuser = currentuser
-        self.__dict__.update(userinfo)
-        if getinfo is None:
-            getinfo = GETINFO
-        if getinfo:
-            data = self.wiki.users(self.name, justdata=True)
-            self.__dict__.update(tuple(data)[0])
-            if currentuser:
-                self.__dict__.update(self.wiki.meta.userinfo())
-
-    def __repr__(self):
-        """Represent a User."""
-        if self.currentuser:
-            return '<Current User {un}>'.format(un=self.name)
-        return '<User {un}>'.format(un=self.name)
-
-    __str__ = __repr__
-
-    def __eq__(self, other):
-        """Check if two users are the same."""
-        return self.name == other.name
-
-    def __hash__(self):
-        """User.__hash__() <==> hash(User)"""
-        return hash(self.name)
-
-    def __bool__(self):
-        """Returns the value of self.currentuser."""
-        return bool(self.currentuser)
-
-    def block(self, reason, expiry=None, **evil):
-        """Block this user.
-
-        See https://www.mediawiki.org/wiki/API:Block for details about kwargs.
-        """
-        token = self.wiki.meta.tokens()
-
-        params = {
-            'action': 'block',
-            'user': self.name,
-            'token': token,
-            'reason': reason,
-            'expiry': expiry
-        }
-        params.update(evil)
-
-        return self.wiki.post_request(**params)
-
-    def rights(self, add, remove, reason=None, **evil):
-        """Change user rights for this user.
-
-        `add` and `rem` can both be either a pipe-separated string
-        of group names, or an iterable of group names.
-        """
-        token = self.wiki.meta.tokens(kind='userrights')
-
-        params = {
-            'action': 'userrights',
-            'reason': reason,
-            'token': token
-        }
-        if hasattr(self, 'userid'):
-            params['userid'] = self.userid
-        else:
-            params['user'] = self.name
-        if isinstance(add, str):
-            params['add'] = add
-        else:
-            params['add'] = '|'.join(add)
-        if isinstance(remove, str):
-            params['remove'] = remove
-        else:
-            params['remove'] = '|'.join(remove)
-        params.update(evil)
-
-        return self.wiki.post_request(**params)
-
-    def contribs(self, limit='max', namespace=None, **evil):
-        """Get contributions from this user."""
-        last_cont = {}
-        params = {
-            'action': 'query',
-            'list': 'usercontribs',
-            'uclimit': limit,
-            'ucnamespace': namespace,
-            'ucprop': 'ids|title|timestamp|comment|parsedcomment|size|sizediff|\
-flags|tags' + '|patrolled' if 'patrol' in getattr(self.wiki.currentuser,
-                                                  []) else '',
-        }
-        params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.wiki.request(**params)
-
-            for rev in data['query']['usercontribs']:
-                yield Revision(self.wiki, self.wiki.page(rev['title']), **rev)
-
-            if limit == 'max' \
-                   or len(data['query']['usercontribs']) \
-                   < params['uclimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['uclimit'] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-
-    def clearhasmsg(self):
-        """Clear the "new message" notification. Must be current user."""
-        assert self.currentuser
-        self.wiki.request(_format='none',
-                          **{'action': 'clearhasmsg'})
-
-    def emailuser(self, target, body, subject=None, ccme=None):
-        """Email another user. Must be current user."""
-        assert self.currentuser
-        token = self.wiki.meta.tokens()
-        return self.wiki.post_request(**{
-            'action': 'emailuser',
-            'target': target.name if isinstance(target, User) else target,
-            'subject': subject,
-            'text': body,
-            'ccme': ccme,
-            'token': token
-        })['emailuser']['result']
-
-    def resetpassword(self, capture=False):
-        """Reset this User's password. If `capture` is truthy, return the
-        temporary password that was sent instead of the reset status (requires
-        the `passwordreset` right).
-        """
-        token = self.wiki.meta.tokens()
-        params = {
-            'action': 'resetpassword',
-            'user': self.name,
-            'token': token
-        }
-        if capture:
-            params['capture'] = True
-        data = self.post_request(**params)
-        if capture:
-            return data['resetpassword']['passwords'][self.name]
-        return data['resetpassword']['status']
-
-class Meta(object):
-    """A separate class for the API "meta" module."""
-    def __init__(self, wiki):
-        """Initialize the instance with its wiki."""
-        self.wiki = wiki
-
-    def __repr__(self):
-        """Represent the Meta instance (there should only ever be one!)."""
-        return '<Meta>'
-
-    __str__ = __repr__
-
-    def tokens(self, kind="csrf"):
-        """Get a token for a database-modifying action.
-
-        The parameter "kind" specifies the type.
-        """
-        params = {
-            'action': 'query',
-            'meta': 'tokens',
-            'type': kind
-        }
-        data = self.wiki.request(**params)
-        if '|' in kind: #if more than one type of token is being requested
-            return data['query']['tokens']
-        return data['query']['tokens'][kind+'token']
-
-    def userinfo(self, kind=None):
-        """Retrieve info about the currently logged-in user.
-
-        The parameter "kind" specifies what kind of information to retrieve.
-        """
-        params = {
-            'action': 'query',
-            'meta': 'userinfo',
-            'type': kind,
-        }
-        data = self.wiki.request(**params)
-        return data['query']['userinfo']
-
-    def allmessages(self, limit='max', messages='*', args=None,
-                    getinfo=None, **evil):
-        """Retrieve a list of all interface messages.
-
-        The "messages" parameter specifies what messages to retrieve (default all).
-
-        The "args" parameter specifies a list of arguments to substitute
-        into the messages.
-
-        See https://www.mediawiki.org/wiki/API:Allmessages for details about
-        other parameters.
-        """
-        last_cont = {}
-        params = {
-            'action': 'query',
-            'meta': 'allmessages',
-            'ammessages': '|'.join(messages) if isinstance(messages, list) else messages,
-            'amargs': '|'.join(args) if isinstance(args, list) else args,
-            'amprefix': evil.get('prefix'),
-        }
-        params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.wiki.request(**params)
-
-            for page_data in data['query']['allmessages']:
-                yield Page(self.wiki, getinfo=getinfo, **page_data)
-
-            if limit == 'max' \
-                   or len(data['query']['allmessages']) \
-                   < params['amlimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['amlimit'] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-
-    def filerepoinfo(self, prop=None, **evil):
-        """Retrieve information about the site's file repositories.
-
-        See https://www.mediawiki.org/wiki/API:Filerepoinfo for information
-        about results.
-        """
-        params = {
-            'action': 'query',
-            'meta': 'filerepoinfo',
-            'friprop': prop,
-        }
-        params.update(evil)
-        data = self.wiki.request(**params)
-        return data['query']['repos']
-
-    def siteinfo(self, prop=None, filteriw=None, showalldb=None,
-                 numberingroup=None, **evil):
-        """Retrieve information about the site.
-
-        See https://www.mediawiki.org/wiki/API:Siteinfo for information
-        about results.
-        """
-        params = {
-            'action': 'query',
-            'meta': 'siteinfo',
-            'siprop': prop,
-            'sifilteriw': None if prop is None else filteriw,
-            'sishowalldb': None if prop is None else showalldb,
-            'sinumberingroup': None if prop is None else numberingroup,
-        }
-        params.update(evil)
-        data = self.wiki.request(**params)
-        return list(data['query'].values())[0]

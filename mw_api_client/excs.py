@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from requests.exceptions import * #import requests exceptions for shorter names
 
 class WikiError(Exception):
     """An arbitrary wiki error. Raised by Wiki.request."""
@@ -6,7 +7,7 @@ class WikiError(Exception):
         Exception.__init__(self, *args)
         self.code = code
 
-class NotFound(Exception):
+class EditConflict(Exception):
     """The last content fetch was before the most recent revision.
 
     Note: do NOT use ``excs.catch`` with this error! It does not inherit
