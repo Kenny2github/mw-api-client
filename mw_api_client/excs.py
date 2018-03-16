@@ -1,5 +1,33 @@
+"""
+mw_api_client.excs - Exceptions and exception handling for API
+requests.
+
+To catch a permission error:
+
+..code-block:: python
+
+    def denied(exc):
+        print('Permission denied:', exc)
+    with mw.catch('permissiondenied', denied):
+        page.edit(contents, summary)
+
+To catch an edit conflict, however, use the following:
+
+..code-block:: python
+
+    try:
+        contents = page.read()
+        page.edit(contents + 'hi', summary)
+    except mw.EditConflict:
+        # handle edit conflict
+"""
 from contextlib import contextmanager
-from requests.exceptions import * #import requests exceptions for shorter names
+
+__all__ = [
+    'WikiError',
+    'EditConflict',
+    'catch'
+]
 
 class WikiError(Exception):
     """An arbitrary wiki error. Raised by Wiki.request."""
@@ -16,15 +44,15 @@ class EditConflict(Exception):
     pass
 
 @contextmanager
-def catch(code, caught=lambda: None, always=lambda: None):
+def catch(code, caught=lambda e: None, always=lambda: None):
     """Catch a certain error code.
     ``code`` (either a string or an object with a __contains__ method)
     is the error code(s) to catch. If it is a string, it is directly compared.
     Otherwise, it is checked for membership.
-    ``caught`` is a callback for the ``except`` part of try/except/finally. If
-    arguments are needed, use functools.partial.
+    ``caught`` is a callback for the ``except`` part of try/except/finally. It
+    must take a single argument for the exception object.
     ``always`` is a callback for the ``finally`` part of the try/except/finally.
-    Again, use functools.partial for arguments.
+    Use functools.partial for arguments.
     ``caught`` and ``always`` default to a function that does nothing.
     """
     try:
@@ -34,6 +62,6 @@ def catch(code, caught=lambda: None, always=lambda: None):
                 if isinstance(code, str)
                 else exc.code not in code):
             raise
-        caught()
+        caught(exc)
     finally:
         always()

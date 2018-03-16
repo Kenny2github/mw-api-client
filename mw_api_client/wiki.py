@@ -1,11 +1,14 @@
+"""
+See the Wiki docstring.
+"""
 from __future__ import print_function
+#pylint: disable=too-many-lines
 import time
 import requests
-from .page import *
-from .revn import *
-from .excs import *
+from .page import Page, User
+from .revn import Revision
+from .excs import WikiError
 from .misc import *
-from . import GETINFO
 
 class Wiki(object):
     """The base class for a wiki. Contains most API modules as methods."""
@@ -76,7 +79,6 @@ class Wiki(object):
         else:
             raise TypeError('"limit" must be str or int, not '
                             + type(limit).__name__)
-        
 
     def request(self, _headers=None, _post=False, files=None, **params):
         """Inner request method.

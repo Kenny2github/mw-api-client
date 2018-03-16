@@ -1,3 +1,4 @@
+"""This module contains the Revision class to avoid import loops."""
 from __future__ import print_function
 from .page import Page
 

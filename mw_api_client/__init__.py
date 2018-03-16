@@ -101,7 +101,7 @@ __all__ = [
     'GETINFO',
     'WikiError',
     'EditConflict',
-    'catch'
+    'catch',
     'Wiki',
     'Page',
     'User',

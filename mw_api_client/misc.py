@@ -1,4 +1,6 @@
+"""This submodule contains the small classes."""
 from __future__ import print_function
+from .page import Page
 
 class RecentChange(object):
     """A recent change. Used *specifically* for Wiki.recentchanges."""

@@ -1,12 +1,22 @@
+"""
+This submodule contains the Page and User objects.
+"""
 from __future__ import print_function
+# pylint: disable=too-many-lines
 try:
     from urllib.parse import urlencode
 except ImportError:
     from urllib import urlencode
 import re
 import time
-from .excs import EditConflict
+from .excs import WikiError, EditConflict
 from . import GETINFO
+
+__all__ = [
+    'Page',
+    'User',
+    'Revision',
+]
 
 class Page(object):
     """The class for a page on a wiki.
@@ -85,7 +95,7 @@ class Page(object):
         except KeyError:
             self.info()
             if hasattr(self, 'missing'):
-                raise NotFound('The page does not exist.')
+                raise WikiError('The page does not exist.', code='notfound')
             raise
         self._lasttimestamp = time.mktime(time.strptime(data['timestamp'],
                                                         '%Y-%m-%dT%H:%M:%SZ'))
@@ -988,7 +998,7 @@ class User(object):
             'ucnamespace': namespace,
             'ucprop': 'ids|title|timestamp|comment|parsedcomment|size|sizediff|\
     flags|tags' + '|patrolled' if 'patrol' in getattr(self.wiki.currentuser,
-                                                  []) else '',
+                                                      []) else '',
         }
         params.update(evil)
 
