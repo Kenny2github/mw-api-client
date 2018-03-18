@@ -8,7 +8,7 @@ with open('README.rst', 'w') as f2:
 
 setup(
     name="mw-api-client",
-    version="3.0.0a1",
+    version="3.0.0a2",
     description="A simple MediaWiki client.",
     long_description=longdesc,
     url="https://github.com/Kenny2github/mw-api-client",
