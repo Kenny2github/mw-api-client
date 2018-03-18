@@ -18,6 +18,33 @@ __all__ = [
     'Revision',
 ]
 
+class _CachedAttribute(object):
+    '''Computes attribute value and caches it in the instance.
+    From the Python Cookbook (Denis Otkidach)
+    This decorator allows you to create a property which can be computed once
+    and accessed many times. Sort of like memoization.
+    '''
+    def __init__(self, method, name=None):
+        """Initialize the cached attribute."""
+        # record the unbound-method and the name
+        self.method = method
+        self.name = name or method.__name__
+        self.__doc__ = method.__doc__
+    def __get__(self, inst, cls):
+        """Get the cached attribute."""
+        # self: <__main__.cache object at 0xb781340c>
+        # inst: <__main__.Foo object at 0xb781348c>
+        # cls: <class '__main__.Foo'>
+        if inst is None:
+            # instance attribute accessed on class, return self
+            # You get here if you write `Foo.bar`
+            return self
+        # compute, cache and return the instance's attribute value
+        result = self.method(inst)
+        # setattr redefines the instance's attribute so this doesn't get called again
+        setattr(inst, self.name, result)
+        return result
+
 class Page(object):
     """The class for a page on a wiki.
 
@@ -100,6 +127,14 @@ class Page(object):
         self._lasttimestamp = time.mktime(time.strptime(data['timestamp'],
                                                         '%Y-%m-%dT%H:%M:%SZ'))
         return data['*']
+
+    @_CachedAttribute
+    def content(self):
+        """This property replaces itself when contents are fetched.
+        To update this property, use ``read``. Always prefer the ``read``
+        method over using the property.
+        """
+        return self.read()
 
     def edit_token(self):
         """Retrieve an edit token for the page.
@@ -343,6 +378,9 @@ class Page(object):
             data = self.wiki.request(**params)
 
             for revd in list(data['query']['pages'].values())[0]['revisions']:
+                if '*' in revd:
+                    revd['content'] = revd['*']
+                    del revd['*']
                 yield Revision(self.wiki, self, **revd)
 
             if limit == 'max' \
@@ -378,6 +416,9 @@ class Page(object):
             data = self.wiki.request(**params)
 
             for rev_data in list(data['query']['deletedrevs'].values())[0]['revisions']:
+                if '*' in rev_data:
+                    rev_data['content'] = rev_data['*']
+                    del rev_data['*']
                 yield Revision(self.wiki, self, **rev_data)
 
             if limit == 'max' \
@@ -412,6 +453,9 @@ class Page(object):
             data = self.wiki.request(**params)
 
             for page_data in data["query"]["backlinks"]:
+                if ['*'] in page_data:
+                    page_data['content'] = page_data['*']
+                    del page_data['*']
                 yield Page(self.wiki, getinfo=getinfo, **page_data)
 
             if limit == 'max' \
@@ -444,6 +488,9 @@ class Page(object):
             data = self.wiki.request(**params)
 
             for page in list(data['query']['pages'].values())[0]['redirects']:
+                if '*' in page:
+                    page['content'] = page['*']
+                    del page['*']
                 yield Page(self.wiki, getinfo=getinfo, **page)
 
             if limit == 'max' \
@@ -552,6 +599,9 @@ class Page(object):
             data = self.wiki.request(**params)
 
             for page in list(data['query']['pages'].values())[0]['links']:
+                if '*' in page:
+                    page['content'] = page['*']
+                    del page['*']
                 yield Page(self.wiki, getinfo=getinfo, **page)
 
             if limit == 'max' \
@@ -616,6 +666,9 @@ class Page(object):
             data = self.wiki.request(**params)
 
             for page_data in data["query"]["embeddedin"]:
+                if '*' in page_data:
+                    page_data['content'] = page_data['*']
+                    del page_data['*']
                 yield Page(self.wiki, getinfo=getinfo, **page_data)
 
             if limit == 'max' \
@@ -648,6 +701,9 @@ class Page(object):
             data = self.wiki.request(**params)
 
             for page in list(data['query']['pages'].values())[0]['templates']:
+                if '*' in page:
+                    page['content'] = page['*']
+                    del page['*']
                 yield Page(self.wiki, getinfo=getinfo, **page)
 
             if limit == 'max' \
@@ -680,6 +736,9 @@ class Page(object):
             data = self.wiki.request(**params)
 
             for page in data["query"]["categorymembers"]:
+                if '*' in page:
+                    page['content'] = page['*']
+                    del page['*']
                 yield Page(self.wiki, getinfo=getinfo, **page)
 
             if limit == 'max' \
@@ -713,6 +772,9 @@ class Page(object):
             data = self.wiki.request(**params)
 
             for page in data['query']['imageusage']:
+                if '*' in page:
+                    page['content'] = page['*']
+                    del page['*']
                 yield Page(self.wiki, getinfo=getinfo, **page)
 
             if limit == 'max' \
@@ -749,6 +811,9 @@ class Page(object):
             data = self.wiki.request(**params)
 
             for page in list(data['query']['pages'].values())[0]['fileusage']:
+                if '*' in page:
+                    page['content'] = page['*']
+                    del page['*']
                 yield Page(self.wiki, getinfo=getinfo, **page)
 
             if limit == 'max' \
@@ -778,6 +843,9 @@ class Page(object):
             data = self.wiki.request(**params)
 
             for page in list(data['query']['pages'].values())[0]['images']:
+                if '*' in page:
+                    page['content'] = page['*']
+                    del page['*']
                 yield Page(self.wiki, getinfo=getinfo, **page)
 
             if limit == 'max' \
@@ -810,6 +878,9 @@ class Page(object):
             data = self.wiki.request(**params)
 
             for page in list(data['query']['pages'].values())[0]['duplicatefiles']:
+                if '*' in page:
+                    page['content'] = page['*']
+                    del page['*']
                 yield Page(self.wiki, getinfo=getinfo, title=page['name'])
 
             if limit == 'max' \
@@ -863,6 +934,9 @@ class Page(object):
             data = self.wiki.request(**params)
 
             for page in list(data['query']['pages'].values())[0]['categories']:
+                if '*' in page:
+                    page['content'] = page['*']
+                    del page['*']
                 yield Page(self.wiki, getinfo=getinfo, **page)
 
             if limit == 'max' \
@@ -996,9 +1070,10 @@ class User(object):
             'list': 'usercontribs',
             'uclimit': limit,
             'ucnamespace': namespace,
+            'ucuserids': self.userid if hasattr(self, 'userid') else None,
+            'ucuser': self.name if not hasattr(self, 'userid') else None,
             'ucprop': 'ids|title|timestamp|comment|parsedcomment|size|sizediff|\
-    flags|tags' + '|patrolled' if 'patrol' in getattr(self.wiki.currentuser,
-                                                      []) else '',
+flags|tags',
         }
         params.update(evil)
 
@@ -1007,6 +1082,9 @@ class User(object):
             data = self.wiki.request(**params)
 
             for rev in data['query']['usercontribs']:
+                if '*' in rev:
+                    rev['content'] = rev['*']
+                    del rev['*']
                 yield Revision(self.wiki, self.wiki.page(rev['title']), **rev)
 
             if limit == 'max' \
@@ -1102,6 +1180,14 @@ class Revision(object):
         data = self.wiki.request(**params)
 
         return list(data['query']['pages'].values())[0]['revisions'][0]['*']
+
+    @_CachedAttribute
+    def content(self):
+        """The content of this revision.
+        This should normally be set when a request instantiating a Revision
+        includes the content.
+        """
+        return self.read()
 
     @staticmethod
     def edit(*_, **__):

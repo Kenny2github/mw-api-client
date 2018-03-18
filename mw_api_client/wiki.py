@@ -5,8 +5,7 @@ from __future__ import print_function
 #pylint: disable=too-many-lines
 import time
 import requests
-from .page import Page, User
-from .revn import Revision
+from .page import Page, User, Revision
 from .excs import WikiError
 from .misc import *
 
@@ -115,7 +114,8 @@ class Wiki(object):
 
         if 'error' in data:
             error = data['error']
-            raise WikiError(error['info'], code=error['code'])
+            raise WikiError(error['code'] + ': ' + error['info'],
+                            code=error['code'])
 
         if 'warnings' in data:
             warnings = data['warnings']
@@ -124,7 +124,7 @@ class Wiki(object):
 
         return data
 
-    def checktoken(self, kind, token):
+    def checktoken(self, token, kind='csrf'):
         """Check the validity of a token. Returns True if valid,
         False if invalid.
         """
@@ -228,6 +228,12 @@ class Wiki(object):
         if isinstance(title, Page):
             return title
         return Page(self, title='Template:' + title, **evil)
+
+    def user(self, name, **evil):
+        """Return a User instance based off of the username."""
+        if isinstance(name, User):
+            return name
+        return User(self, name=name, **evil)
 
     def createaccount(self, name, reason, password=None,
                       email=None, mailpassword=False):
@@ -419,7 +425,13 @@ class Wiki(object):
             data = self.request(**params)
 
             for page in data['query']['alldeletedrevisions']:
+                if '*' in page:
+                    page['content'] = page['*']
+                    del page['*']
                 for rev in page['revisions']:
+                    if '*' in rev:
+                        rev['content'] = rev['*']
+                        del rev['*']
                     yield Revision(self,
                                    Page(self,
                                         getinfo=getinfo,
@@ -458,6 +470,9 @@ class Wiki(object):
             data = self.request(**params)
 
             for page_data in data['query']['allfileusages']:
+                if '*' in page_data:
+                    page_data['content'] = page_data['*']
+                    del page_data['*']
                 yield Page(self, getinfo=getinfo, **page_data)
 
             if limit == 'max' \
@@ -491,6 +506,9 @@ class Wiki(object):
             data = self.request(**params)
 
             for page_data in data['query']['allimages']:
+                if '*' in page_data:
+                    page_data['content'] = page_data['*']
+                    del page_data['*']
                 yield Page(self, getinfo=getinfo, **page_data)
 
             if limit == 'max' \
@@ -523,6 +541,9 @@ class Wiki(object):
             data = self.request(**params)
 
             for page_data in data['query']['alllinks']:
+                if '*' in page_data:
+                    page_data['content'] = page_data['*']
+                    del page_data['*']
                 yield Page(self, getinfo=getinfo, **page_data)
 
             if limit == 'max' \
@@ -557,6 +578,9 @@ class Wiki(object):
             data = self.request(**params)
 
             for page_data in data['query']['allpages']:
+                if '*' in page_data:
+                    page_data['content'] = page_data['*']
+                    del page_data['*']
                 yield Page(self, getinfo=getinfo, **page_data)
 
             if limit == 'max' \
@@ -591,6 +615,9 @@ class Wiki(object):
             data = self.request(**params)
 
             for page_data in data['query']['allredirects']:
+                if '*' in page_data:
+                    page_data['content'] = page_data['*']
+                    del page_data['*']
                 yield Page(self, getinfo=getinfo, **page_data)
 
             if limit == 'max' \
@@ -621,7 +648,13 @@ class Wiki(object):
             data = self.request(**params)
 
             for page in data['query']['allrevisions']:
+                if '*' in page:
+                    page['content'] = page['*']
+                    del page['*']
                 for rev_data in page['revisions']:
+                    if '*' in rev_data:
+                        rev_data['content'] = rev_data['*']
+                        del rev_data['*']
                     yield Revision(self, Page(self, getinfo=getinfo, **page),
                                    **rev_data)
 
@@ -657,6 +690,9 @@ class Wiki(object):
             data = self.request(**params)
 
             for page_data in data['query']['alltransclusions']:
+                if '*' in page_data:
+                    page_data['content'] = page_data['*']
+                    del page_data['*']
                 yield Page(self, getinfo=getinfo, **page_data)
 
             if limit == 'max' \
@@ -764,7 +800,13 @@ class Wiki(object):
             data = self.request(**params)
 
             for page in data['query']['deletedrevs']:
+                if '*' in page:
+                    page['content'] = page['*']
+                    del page['*']
                 for rev_data in page['revisions']:
+                    if '*' in rev_data:
+                        rev_data['content'] = rev_data['*']
+                        del rev_data['*']
                     yield Revision(self,
                                    Page(self, getinfo=getinfo, **page),
                                    **rev_data)
@@ -803,6 +845,9 @@ class Wiki(object):
             data = self.request(**params)
 
             for page in data['query']['exturlusage']:
+                if '*' in page:
+                    page['content'] = page['*']
+                    del page['*']
                 yield Page(self, getinfo=getinfo, **page)
 
             if limit == 'max' \
@@ -834,6 +879,9 @@ class Wiki(object):
             data = self.request(**params)
 
             for page in data['query']['filearchive']:
+                if '*' in page:
+                    page['content'] = page['*']
+                    del page['*']
                 yield Page(self, getinfo=getinfo, **page)
 
             if limit == 'max' \
@@ -868,6 +916,9 @@ class Wiki(object):
             data = self.request(**params)
 
             for page in data['query']['iwbacklinks']:
+                if '*' in page:
+                    page['content'] = page['*']
+                    del page['*']
                 yield Page(self, getinfo=getinfo, **page)
 
             if limit == 'max' \
@@ -904,6 +955,9 @@ class Wiki(object):
             data = self.request(**params)
 
             for page in data['query']['langbacklinks']:
+                if '*' in page:
+                    page['content'] = page['*']
+                    del page['*']
                 yield Page(self, getinfo=getinfo, **page)
 
             if limit == 'max' \
@@ -984,6 +1038,9 @@ class Wiki(object):
             data = self.request(**params)
 
             for page in data['query']['pageswithprop']:
+                if '*' in page:
+                    page['content'] = page['*']
+                    del page['*']
                 yield Page(self, getinfo=getinfo, **page)
 
             if limit == 'max' \
@@ -1021,6 +1078,9 @@ class Wiki(object):
             data = self.request(**params)
 
             for page in data['query']['protectedtitles']:
+                if '*' in page:
+                    page['content'] = page['*']
+                    del page['*']
                 yield Page(self, getinfo=getinfo, **page)
 
             if limit == 'max' \
@@ -1050,6 +1110,9 @@ class Wiki(object):
             data = self.request(**params)
 
             for page in data['query']['random']:
+                if '*' in page:
+                    page['content'] = page['*']
+                    del page['*']
                 yield Page(self, getinfo=getinfo, **page)
 
             if limit == 'max' \
@@ -1118,6 +1181,9 @@ redirecttitle|redirectsnippet|sectiontitle|sectionsnippet',
             data = self.request(**params)
 
             for result in data['query']['search']:
+                if '*' in result:
+                    result['content'] = result['*']
+                    del result['*']
                 yield Page(self, getinfo=getinfo, **result)
 
             if limit == 'max' \
