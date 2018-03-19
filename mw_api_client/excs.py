@@ -31,7 +31,9 @@ __all__ = [
 
 class WikiError(Exception):
     """An arbitrary wiki error. Raised by Wiki.request."""
-    def __init__(self, *args, code):
+    def __init__(self, code=None, *args):
+        if code is None:
+            raise TypeError('``code`` must not be None')
         Exception.__init__(self, *args)
         self.code = code
 

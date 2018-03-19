@@ -1,16 +1,20 @@
 from unittest import TestCase
+from sys import version_info
 import mw_api_client as mw
+
+if version_info[0] > 2:
+    basestring = str
 
 WP = mw.Wiki('https://en.wikipedia.org/w/api.php', 'Test suite')
 class TestEdit(TestCase):
     def test_revisions(self):
         sandbox = WP.page('Project:Sandbox')
         for rev in sandbox.revisions(limit=10, rvprop='content'):
-            self.assertTrue(isinstance(rev.content, str))
+            self.assertTrue(isinstance(rev.content, basestring))
     def test_read_is_string(self):
         sandbox = WP.page('Project:Sandbox')
         content = sandbox.read()
-        self.assertTrue(isinstance(content, str))
+        self.assertTrue(isinstance(content, basestring))
     def test_edit_success(self):
         wp = mw.Wiki('https://en.wikipedia.org/w/api.php', 'Automated testing')
         sandbox = wp.page('Project:Sandbox')

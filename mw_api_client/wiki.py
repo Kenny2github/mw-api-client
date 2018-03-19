@@ -114,8 +114,8 @@ class Wiki(object):
 
         if 'error' in data:
             error = data['error']
-            raise WikiError(error['code'] + ': ' + error['info'],
-                            code=error['code'])
+            raise WikiError(error['code'],
+                            error['code'] + ': ' + error['info'])
 
         if 'warnings' in data:
             warnings = data['warnings']
