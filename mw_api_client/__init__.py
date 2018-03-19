@@ -92,9 +92,9 @@ from __future__ import print_function
 
 GETINFO = False
 
-from .wiki import *
-from .page import *
-from .excs import *
+from .wiki import Wiki
+from .page import Page, User, Revision
+from .excs import WikiError, EditConflict, catch
 from .misc import *
 
 __all__ = [

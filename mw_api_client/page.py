@@ -18,7 +18,7 @@ __all__ = [
     'Revision',
 ]
 
-class _CachedAttribute(object):
+class _CachedAttribute(object): # pylint: disable=too-few-public-methods
     '''Computes attribute value and caches it in the instance.
     From the Python Cookbook (Denis Otkidach)
     This decorator allows you to create a property which can be computed once
@@ -122,7 +122,7 @@ class Page(object):
         except KeyError:
             self.info()
             if hasattr(self, 'missing'):
-                raise WikiError('The page does not exist.', code='notfound')
+                raise WikiError('notfound', 'The page does not exist.')
             raise
         self._lasttimestamp = time.mktime(time.strptime(data['timestamp'],
                                                         '%Y-%m-%dT%H:%M:%SZ'))
