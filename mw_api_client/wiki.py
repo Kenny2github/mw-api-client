@@ -1,13 +1,63 @@
 """
-See the Wiki docstring.
+See the Wiki docstrings.
 """
 from __future__ import print_function
 #pylint: disable=too-many-lines
 import time
+from functools import wraps
 import requests
 from .page import Page, User, Revision
 from .excs import WikiError
 from .misc import *
+
+def _mkgen(func):
+    gen = func()
+    params = gen.__next__()
+    toyield = gen.__next__()
+    path = gen.__next__()
+    dynamparams = gen.__next__()
+    positional = gen.__next__()
+    @wraps(func)
+    def newfunc(self, *pargs, **kwargs):
+        last_cont = {}
+        for key, (val, default) in dynamparams.items():
+            try:
+                params[key] = kwargs.get(val, pargs[positional.index(val)])
+            except IndexError:
+                params[key] = kwargs.get(val, default)
+            if val in kwargs:
+                del kwargs[val]
+        params.update(kwargs) #required parameters gone, remaining: evil        limitkey = 'limit'
+        for key in params:
+            if key.endswith('limit'):
+                limitkey = key
+                break
+
+        while 1:
+            params.update(last_cont)
+            data = self.request(**params)
+            rootdata = data
+
+            for part in path:
+                data = data[part]
+            for thing in data:
+                if '*' in thing:
+                    thing['content'] = thing['*']
+                    del thing['*']
+                yield toyield(self,
+                              getinfo=kwargs.get('getinfo', None),
+                              **thing)
+            if params[limitkey] == 'max' \
+                   or len(data) < params[limitkey]:
+                if 'continue' in rootdata:
+                    last_cont = rootdata['continue']
+                    last_cont[limitkey] = self._wraplimit(params)
+                else:
+                    break
+            else:
+                break
+
+    return newfunc
 
 class Wiki(object):
     """The base class for a wiki. Contains most API modules as methods."""
@@ -98,7 +148,9 @@ class Wiki(object):
             else:
                 response = self._session.get(self.api_url, params=params,
                                              headers=headers, files=files)
-        except requests.exceptions.ConnectionError:
+            response.raise_for_status()
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.HTTPError):
             #try again as it may have been a one-time thing
             if _post:
                 response = self._session.post(self.api_url, data=params,
@@ -106,8 +158,7 @@ class Wiki(object):
             else:
                 response = self._session.get(self.api_url, data=params,
                                              headers=headers, files=files)
-
-        response.raise_for_status()
+            response.raise_for_status()
 
         #print(response.text)
         data = response.json()
@@ -378,6 +429,9 @@ class Wiki(object):
 
     def allcategories(self, limit="max", prefix=None, getinfo=None, **evil):
         """Retrieve a generator of all categories represented as Pages."""
+        # NOTE: this function is not decorator-made because it
+        # has a special API data format - the * value is the title,
+        # not the content.
         last_cont = {}
         params = {
             'action': 'query',
@@ -409,6 +463,8 @@ class Wiki(object):
 
     def alldeletedrevisions(self, limit="max", prefix=None, getinfo=None, **evil):
         """Retrieve a generator of all deleted Revisions."""
+        # NOTE: this function is not decorator-made because it
+        # uses nested loops.
         last_cont = {}
         params = {
             'action': 'query',
@@ -449,190 +505,109 @@ class Wiki(object):
             else:
                 break
 
-    def allfileusages(self, limit="max", prefix=None,
-                      unique=False, getinfo=None, **evil):
+    @_mkgen
+    def allfileusages(limit="max", prefix=None, getinfo=None, **evil):
         """Retrieve a generator of Pages corresponding to all file usages."""
-        last_cont = {}
         params = {
             'action': 'query',
             'list': 'allfileusages',
-            'aflimit': limit,
-            'afprefix': prefix
+            'afprop': 'ids|titles',
         }
-        if unique:
-            params['afunique'] = 'true'
-        else:
-            params['afprop'] = 'ids|titles'
-        params.update(evil)
+        yield params
+        yield Page
+        yield ('query', 'allfileusages')
+        dynamparams = {
+            'aflimit': 'limit',
+            'afprefix': 'prefix',
+        }
+        yield dynamparams
+        yield ('limit', 'prefix', 'getinfo')
 
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-
-            for page_data in data['query']['allfileusages']:
-                if '*' in page_data:
-                    page_data['content'] = page_data['*']
-                    del page_data['*']
-                yield Page(self, getinfo=getinfo, **page_data)
-
-            if limit == 'max' \
-                   or len(data['query']['allfileusages']) \
-                   < params['aflimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['aflimit'] = self._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-
-    def allimages(self, limit="max", prefix=None,
+    @_mkgen
+    def allimages(limit="max", prefix=None,
                   getinfo=None, **evil):
         """Retrieve a generator of all images represented as Pages."""
-        last_cont = {}
         params = {
             'action': 'query',
             'list': 'allimages',
-            'ailimit': limit,
-            'aiprefix': prefix,
             'aiprop': 'timestamp|user|userid|comment|parsedcomment|'
                       + 'canonicaltitle|url|size|sha1|mime|mediatype|'
                       + 'metadata|commonmetadata|extmetadata|bitdepth'
         }
-        params.update(evil)
+        yield params
+        yield Page
+        yield ('query', 'allimages')
+        dynamparams = {
+            'ailimit': 'limit',
+            'aiprefix': 'prefix',
+        }
+        yield dynamparams
+        yield ('limit', 'prefix', 'getinfo')
 
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-
-            for page_data in data['query']['allimages']:
-                if '*' in page_data:
-                    page_data['content'] = page_data['*']
-                    del page_data['*']
-                yield Page(self, getinfo=getinfo, **page_data)
-
-            if limit == 'max' \
-                   or len(data['query']['allimages']) \
-                   < params['ailimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['ailimit'] = self._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-
-    def alllinks(self, limit="max", namespace='0',
+    @_mkgen
+    def alllinks(limit="max", namespace='0',
                  prefix=None, getinfo=None, **evil):
         """Retrieve a generator of all links."""
-        last_cont = {}
         params = {
             'action': 'query',
             'list': 'alllinks',
-            'allimit': limit,
-            'alprefix': prefix,
-            'alnamespace': namespace,
             'alprop': 'ids|title',
         }
-        params.update(evil)
+        yield params
+        yield Page
+        yield ('query', 'alllinks')
+        dynamparams = {
+            'allimit': 'limit',
+            'alprefix': 'prefix',
+            'alnamespace': 'namespace',
+        }
+        yield dynamparams
+        yield ('limit', 'namespace', 'prefix', 'getinfo')
 
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-
-            for page_data in data['query']['alllinks']:
-                if '*' in page_data:
-                    page_data['content'] = page_data['*']
-                    del page_data['*']
-                yield Page(self, getinfo=getinfo, **page_data)
-
-            if limit == 'max' \
-                   or len(data['query']['alllinks']) \
-                   < params['allimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['allimit'] = self._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-
-    def allpages(self, limit="max", namespace=0,
+    @_mkgen
+    def allpages(limit="max", namespace=0,
                  prefix=None, getinfo=None, **evil):
         """Retrieve a generator of all Pages.
 
         NOTE: This may take a long time on very large wikis!
         """
-        last_cont = {}
         params = {
             'action': 'query',
             'list': 'allpages',
-            'aplimit': limit,
-            'apprefix': prefix,
-            'apnamespace': namespace,
         }
-        params.update(evil)
+        yield params
+        yield Page
+        yield ('query', 'allpages')
+        dynamparams = {
+            'aplimit': ('limit', limit),
+            'apprefix': ('prefix', prefix),
+            'apnamespace': ('namespace', namespace)
+        }
+        yield dynamparams
+        yield ('limit', 'namespace', 'prefix', 'getinfo')
 
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-
-            for page_data in data['query']['allpages']:
-                if '*' in page_data:
-                    page_data['content'] = page_data['*']
-                    del page_data['*']
-                yield Page(self, getinfo=getinfo, **page_data)
-
-            if limit == 'max' \
-                   or len(data['query']['allpages']) \
-                   < params['aplimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['aplimit'] = self._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-
-    def allredirects(self, limit="max", prefix=None,
-                     unique=False, getinfo=None, **evil):
+    def allredirects(limit="max", prefix=None,
+                     getinfo=None, **evil):
         """Retrieve a generator of all Pages that are redirects."""
-        last_cont = {}
         params = {
             'action': 'query',
             'list': 'allredirects',
-            'arprefix': prefix,
-            'arlimit': limit,
+            'arprop': 'ids|title|fragment|interwiki',
         }
-        if unique:
-            params['arunique'] = 'true'
-        else:
-            params['arprop'] = 'ids|title|fragment|interwiki'
-        params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-
-            for page_data in data['query']['allredirects']:
-                if '*' in page_data:
-                    page_data['content'] = page_data['*']
-                    del page_data['*']
-                yield Page(self, getinfo=getinfo, **page_data)
-
-            if limit == 'max' \
-                   or len(data['query']['allredirects']) \
-                   < params['arlimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['arlimit'] = self._wraplimit(params)
-                else:
-                    break
-            else:
-                break
+        yield params
+        yield Page
+        yield ('query', 'allredirects')
+        dynamparams = {
+            'arprefix': ('prefix', prefix),
+            'arlimit': ('limit', limit),
+        }
+        yield dynamparams
+        yield ('limit', 'prefix', 'getinfo')
 
     def allrevisions(self, limit="max", getinfo=None, **evil):
         """Retrieve a generator of all revisions."""
+        # NOTE: this function is not decorator-made because
+        # it uses nested loops.
         last_cont = {}
         params = {
             'action': 'query',
@@ -669,110 +644,69 @@ class Wiki(object):
             else:
                 break
 
-    def alltransclusions(self, limit="max", prefix=None,
-                         unique=False, getinfo=None, **evil):
+    @_mkgen
+    def alltransclusions(limit="max", prefix=None,
+                         getinfo=None, **evil):
         """Retrieve a generator of all transclusions."""
-        last_cont = {}
         params = {
             'action': 'query',
             'list': 'alltransclusions',
-            'atprefix': prefix,
-            'atlimit': limit,
+            'atprop': 'title|ids',
         }
-        if unique:
-            params['atunique'] = 'true'
-        else:
-            params['atprop'] = 'title|ids'
-        params.update(evil)
+        yield params
+        yield Page
+        yield ('query', 'alltransclusions')
+        dynamparams = {
+            'atprefix': ('prefix', prefix),
+            'atlimit': ('limit', limit),
+        }
+        yield dynamparams
+        yield ('limit', 'prefix', 'getinfo')
 
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-
-            for page_data in data['query']['alltransclusions']:
-                if '*' in page_data:
-                    page_data['content'] = page_data['*']
-                    del page_data['*']
-                yield Page(self, getinfo=getinfo, **page_data)
-
-            if limit == 'max' \
-                   or len(data['query']['alltransclusions']) \
-                   < params['atlimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['atlimit'] = self._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-
-    def allusers(self, limit="max", prefix=None, **evil):
+    @_mkgen
+    def allusers(limit="max", prefix=None, ingroup=None, notingroup=None,
+                 withrights=None, acive=None, **evil):
         """Retrieve a generator of all users, each item being a dict."""
-        last_cont = {}
         params = {
             'action': 'query',
             'list': 'allusers',
-            'auprefix': prefix,
-            'aulimit': limit,
             'auprop': 'blockinfo|groups|implicitgroups|rights|editcount'
                       + '|registration'
         }
-        params.update(evil)
+        yield params
+        yield User
+        yield ('query', 'allusers')
+        dynamparams = {
+            'augroup': ('ingroup', ingroup),
+            'auexcludegroup': ('notingroup', notingroup),
+            'aurights': ('withrights', withrights),
+            'auactiveusers': ('active', active),
+        }
+        yield dynamparams
+        yield ('limit', 'prefix', 'ingroup',
+               'notingroup', 'withrights', 'active')
 
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-
-            for user_data in data['query']['allusers']:
-                yield user_data
-
-            if limit == 'max' \
-                   or len(data['query']['allusers']) \
-                   < params['aulimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['aulimit'] = self._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-
-    def blocks(self, limit="max", blockip=None, users=None, **evil):
+    @_mkgen
+    def blocks(limit="max", blockip=None, users=None, **evil):
         """Retrieve a generator of currently active blocks, each item being
         a dict.
         """
-        if blockip is not None and users is not None:
-            raise ValueError("Cannot specify IP and username together!")
-
-        last_cont = {}
         params = {
             'action': 'query',
             'list': 'blocks',
-            'bkip': blockip,
-            'bkusers': users,
-            'bklimit': limit,
             'bkprop': 'id|user|userid|by|byid|timestamp|expiry|reason|range|'
                       + 'flags'
         }
-        params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-
-            for block_data in data['query']['blocks']:
-                yield block_data
-
-            if limit == 'max' \
-                   or len(data['query']['blocks']) \
-                   < params['bklimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['bklimit'] = self._wraplimit(params)
-                else:
-                    break
-            else:
-                break
+        yield params
+        yield dict
+        yield ('query', 'blocks')
+        dynamparams = {
+            'bkip': ('blockip', blockip),
+            'bkusers': ('users', users),
+            'bklimit': ('limit', limit),
+        }
+        yield dynamparams
+        yield ('limit', 'blockip', 'users')
 
     def deletedrevs(self, limit="max", user=None,
                     namespace=None, getinfo=None, **evil):
