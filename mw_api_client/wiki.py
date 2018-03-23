@@ -716,6 +716,8 @@ class Wiki(object):
         deleted revisions in a certain namespace (specify "namespace")
         or both.
         """
+        # NOTE: this function is not decorator-made because
+        # it uses nested loops.
         last_cont = {}
         params = {
             'action': 'query',
@@ -756,7 +758,8 @@ class Wiki(object):
             else:
                 break
 
-    def exturlusage(self, limit="max", url=None, protocol=None,
+    @_mkgen
+    def exturlusage(limit="max", url=None, protocol=None,
                     getinfo=None, **evil):
         """Retrieve a generator of Pages that link to a particular URL or
         protocol, or simply external links in general.
@@ -764,40 +767,24 @@ class Wiki(object):
         These pages will have an extra attribute, `url`, that shows what
         URL they link to externally.
         """
-        last_cont = {}
         params = {
             'action': 'query',
             'list': 'exturlusage',
-            'euquery': url,
-            'euprotocol': protocol,
-            'eulimit': limit
         }
-        params.update(evil)
+        yield params
+        yield Page
+        yield ('query', 'exturlusage')
+        dynamparams = {
+            'euquery': ('url', None),
+            'euprotocol': ('protocol', None),
+            'eulimit': ('limit', 'max')
+        }
+        yield dynamparams
+        yield ('limit', 'url', 'protocol', 'getinfo')
 
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-
-            for page in data['query']['exturlusage']:
-                if '*' in page:
-                    page['content'] = page['*']
-                    del page['*']
-                yield Page(self, getinfo=getinfo, **page)
-
-            if limit == 'max' \
-                   or len(data['query']['exturlusage']) \
-                   < params['eulimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['eulimit'] = self._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-
-    def filearchive(self, limit="max", prefix=None, getinfo=None, **evil):
+    @_mkgen
+    def filearchive(limit="max", prefix=None, getinfo=None, **evil):
         """Retrieve a generator of deleted files, represented as Pages."""
-        last_cont = {}
         params = {
             'action': 'query',
             'list': 'filearchive',
@@ -806,74 +793,46 @@ class Wiki(object):
             'falimit': limit,
             'faprefix': prefix
         }
-        params.update(evil)
+        yield params
+        yield Page
+        yield ('query', 'filearchive')
+        dynamparams = {
+            'falimit': ('limit', 'max'),
+            'faprefix': ('prefix', None),
+        }
+        yield dynamparams
+        yield ('limit', 'prefix', 'getinfo')
 
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-
-            for page in data['query']['filearchive']:
-                if '*' in page:
-                    page['content'] = page['*']
-                    del page['*']
-                yield Page(self, getinfo=getinfo, **page)
-
-            if limit == 'max' \
-                   or len(data['query']['filearchive']) \
-                   < params['falimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['falimit'] = self._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-
-    def interwikibacklinks(self, iwprefix, iwtitle=None,
+    @_mkgen
+    def interwikibacklinks(iwprefix, iwtitle=None,
                            limit="max", getinfo=None, **evil):
         """Retrieve a generator of Pages that link to a particular
         interwiki prefix (and title, if specified)
         """
-        last_cont = {}
         params = {
             'action': 'query',
             'list': 'iwbacklinks',
-            'iwblprefix': iwprefix,
-            'iwbltitle': iwtitle,
-            'iwbllimit': limit,
             'iwblprop': 'iwprefix|iwtitle'
         }
-        params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-
-            for page in data['query']['iwbacklinks']:
-                if '*' in page:
-                    page['content'] = page['*']
-                    del page['*']
-                yield Page(self, getinfo=getinfo, **page)
-
-            if limit == 'max' \
-                   or len(data['query']['iwbacklinks']) \
-                   < params['iwblimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['iwblimit'] = self._wraplimit(params)
-                else:
-                    break
-            else:
-                break
+        yield params
+        yield Page
+        yield ('query', 'iwbacklinks')
+        dynamparams = {
+            'iwblprefix': ('iwprefix', None), #it'll error if not specified
+            'iwbltitle': ('iwtitle', None),
+            'iwbllimit': ('limit', 'max'),
+        }
+        yield dynamparams
+        yield ('iwprefix', 'iwtitle', 'limit', 'getinfo')
 
     iwbacklinks = interwikibacklinks
 
-    def languagebacklinks(self, langprefix, langtitle=None,
+    @_mkgen
+    def languagebacklinks(langprefix, langtitle=None,
                           limit="max", getinfo=None, **evil):
         """Retrieve a generator of Pages that link to a particular language
         code (and title, if specified)
         """
-        last_cont = {}
         params = {
             'action': 'query',
             'list': 'langbacklinks',
@@ -882,288 +841,184 @@ class Wiki(object):
             'lbllimit': limit,
             'lblprop': 'lllang|lltitle'
         }
-        params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-
-            for page in data['query']['langbacklinks']:
-                if '*' in page:
-                    page['content'] = page['*']
-                    del page['*']
-                yield Page(self, getinfo=getinfo, **page)
-
-            if limit == 'max' \
-                   or len(data['query']['langbacklinks']) \
-                   < params['lbllimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['lbllimit'] = self._wraplimit(params)
-                else:
-                    break
-            else:
-                break
+        yield params
+        yield Page
+        yield ('query', 'langbacklinks')
+        dynamparams = {
+            'lbllang': ('langprefix', None), #it'll error anyway
+            'lbltitle': ('langtitle', None),
+            'lbllimit': ('limit', 'max'),
+        }
+        yield dynamparams
+        yield ('langprefix', 'langtitle', 'limit', 'getinfo')
 
     langbacklinks = languagebacklinks
 
-    def logevents(self, limit="max", title=None, user=None, **evil):
+    @_mkgen
+    def logevents(limit="max", title=None, user=None, **evil):
         """Retrieve a generator of log events, each event being a dict.
 
         For more information on results, see:
         https://www.mediawiki.org/wiki/API:Logevents
         """
-        last_cont = {}
         params = {
             'action': 'query',
             'list': 'logevents',
             'leprop': 'ids|title|type|user|userid|timestamp|comment|'
                       + 'parsedcomment|details|tags',
-            'leuser': user,
-            'letitle': title,
-            'lelimit': limit
         }
-        params.update(evil)
+        yield params
+        yield dict
+        yield ('query', 'logevents')
+        dynamparams = {
+            'leuser': ('user', None),
+            'letitle': ('title', None),
+            'lelimit': ('limit', 'max'),
+        }
+        yield dynamparams
+        yield ('limit', 'title', 'user')
 
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-
-            for log_data in data['query']['logevents']:
-                yield log_data
-
-            if limit == 'max' \
-                   or len(data['query']['logevents']) \
-                   < params['lelimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['lelimit'] = self._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-
-    def pagepropnames(self):
+    @_mkgen
+    def pagepropnames(limit='max'):
         """Retrieve a generator of all possible page properties."""
         params = {
             'action': 'query',
             'list': 'pagepropnames',
-            'ppnlimit': 'max',
         }
-        data = self.request(**params)
+        yield params
+        yield dict
+        yield ('query', 'pagepropnames')
+        yield {
+            'ppnlimit': ('limit', 'max'),
+        }
+        yield ('limit',)
 
-        for prop in data['query']['pagepropnames']:
-            yield prop['propname']
-
-    def pageswithprop(self, prop, limit="max", getinfo=None, **evil):
+    @_mkgen
+    def pageswithprop(prop, limit="max", getinfo=None, **evil):
         """Retrieve a generator of Pages with a particular property."""
-        last_cont = {}
         params = {
             'action': 'query',
             'list': 'pageswithprop',
-            'pwppropname': prop,
             'pwpprop': 'ids|title|value',
-            'pwplimit': limit,
         }
-        params.update(evil)
+        yield params
+        yield Page
+        yield ('query', 'pageswithprop')
+        dynamparams = {
+            'pwppropname': ('prop', None), #it'll error anyway
+            'pwplimit': ('limit', 'max'),
+        }
+        yield dynamparams
+        yield ('prop', 'limit')
 
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-
-            for page in data['query']['pageswithprop']:
-                if '*' in page:
-                    page['content'] = page['*']
-                    del page['*']
-                yield Page(self, getinfo=getinfo, **page)
-
-            if limit == 'max' \
-                   or len(data['query']['pageswithprop']) \
-                   < params['pwplimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['pwplimit'] = self._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-
-    def protectedtitles(self, limit="max", level=None,
+    @_mkgen
+    def protectedtitles(limit="max", level=None,
                         namespace=None, getinfo=None, **evil):
         """Retrieve a generator of Pages protected from creation.
 
         This means that all of the Pages returned will have the "missing"
         attribute set.
         """
-        last_cont = {}
         params = {
             'action': 'query',
             'list': 'protectedtitles',
-            'ptnamespace': namespace,
-            'ptlevel': level,
             'ptprop': 'timestamp|user|userid|comment|'
                       + 'parsedcomment|expiry|level',
-            'ptlimit': limit
         }
-        params.update(evil)
+        yield params
+        yield Page
+        yield ('query', 'protectedtitles')
+        dynamparams = {
+            'ptnamespace': ('namespace', None),
+            'ptlevel': ('level', None),
+            'ptlimit': ('limit', 'max'),
+        }
+        yield dynamparams
+        yield ('limit', 'level', 'namespace', 'getinfo')
 
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-
-            for page in data['query']['protectedtitles']:
-                if '*' in page:
-                    page['content'] = page['*']
-                    del page['*']
-                yield Page(self, getinfo=getinfo, **page)
-
-            if limit == 'max' \
-                   or len(data['query']['protectedtitles']) \
-                   < params['ptlimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['ptlimit'] = self._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-
-    def random(self, limit="max", namespace=None, getinfo=None, **evil):
+    @_mkgen
+    def random(limit="max", namespace=None, getinfo=None, **evil):
         """Retrieve a generator of random Pages."""
-        last_cont = {}
         params = {
             'action': 'query',
             'list': 'random',
-            'rnnamespace': namespace,
-            'rnlimit': limit
         }
-        params.update(evil)
+        yield params
+        yield Page
+        yield ('query', 'random')
+        dynamparams = {
+            'rnnamespace': ('namespace', None),
+            'rnlimit': ('limit', 'max'),
+        }
+        yield dynamparams
+        yield ('limit', 'namespace', 'getinfo')
 
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-
-            for page in data['query']['random']:
-                if '*' in page:
-                    page['content'] = page['*']
-                    del page['*']
-                yield Page(self, getinfo=getinfo, **page)
-
-            if limit == 'max' \
-                   or len(data['query']['random']) \
-                   < params['rnlimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['rnlimit'] = self._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-
-    def recentchanges(self, limit=50, mostrecent=None, **evil):
+    @_mkgen
+    def recentchanges(limit=50, mostrecent=None, **evil):
         """Retrieve recent changes on the wiki, a la Special:RecentChanges"""
-        last_cont = {}
         params = {
             'action': 'query',
             'list': 'recentchanges',
             'rcprop': 'user|userid|comment|parsedcomment|timestamp|title|ids|\
-sha1|sizes|redirect|loginfo|tags|flags' + ('|patrolled' if 'patrol' in getattr(
-    self.currentuser, 'rights', []) else ''),
-            'rctoponly': mostrecent,
-            'rclimit': limit
+sha1|sizes|redirect|loginfo|tags|flags',
         }
-        params.update(evil)
+        yield params
+        yield RecentChange
+        yield ('query', 'recentchanges')
+        dynamparams = {
+            'rctoponly': ('mostrecent', None),
+            'rclimit': ('limit', 50),
+        }
+        yield ('limit', 'mostrecent')
 
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-
-            for change in data['query']['recentchanges']:
-                yield RecentChange(self, **change)
-
-            if limit == 'max' \
-                   or len(data['query']['recentchanges']) \
-                   < params['rclimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['rclimit'] = self._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-
-    def search(self, term, limit=500, namespace=None, getinfo=None, **evil):
+    @_mkgen
+    def search(term, limit=500, namespace=None, getinfo=None, **evil):
         """Search page titles (or content, if `what` is 'text') for `term`.
 
         Specify `namespace` to only search in that/those namespace(s).
         """
-        last_cont = {}
         params = {
             'action': 'query',
             'list': 'search',
-            'srsearch': term,
-            'srnamespace': namespace,
             'srwhat': 'title|text|nearmatch',
             'srprop': 'size|wordcount|timestamp|score|snippet|titlesnippet|\
 redirecttitle|redirectsnippet|sectiontitle|sectionsnippet',
-            'srlimit': limit
         }
-        params.update(evil)
+        yield params
+        yield Page
+        yield ('query', 'search')
+        dynamparams = {
+            'srsearch': ('term', None), #it'll error anyway
+            'srnamespace': ('namespace', None),
+            'srlimit': ('limit', 500),
+        }
+        yield dynamparams
+        yield ('term', 'limit', 'namespace', 'getinfo')
 
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-
-            for result in data['query']['search']:
-                if '*' in result:
-                    result['content'] = result['*']
-                    del result['*']
-                yield Page(self, getinfo=getinfo, **result)
-
-            if limit == 'max' \
-                   or len(data['query']['search']) \
-                   < params['srlimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['rclimit'] = self._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-
-    def tags(self, limit='max', **evil):
+    @_mkgen
+    def tags(limit='max', **evil):
         """Retrieve a generator of Tags on this wiki, a la Special:Tags."""
-        last_cont = {}
         params = {
             'action': 'query',
             'list': 'tags',
             'tglimit': limit,
             'tgprop': 'name|displayname|description|hitcount'
         }
-        params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-
-            for tagprop in data['query']['tags']:
-                yield Tag(self, **tagprop)
-
-            if limit == 'max' \
-                   or len(data['query']['tags']) \
-                   < params['tglimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['tglimit'] = self._wraplimit(params)
-                else:
-                    break
-            else:
-                break
+        yield params
+        yield Tag
+        yield ('query', 'tags')
+        dynamparams = {
+            'tglimit': ('limit', 'max'),
+        }
+        yield dynamparams
+        yield ('limit',)
 
     def users(self, names=None, justdata=False, **evil):
         """Retrieve details of the specified users, and generate a list
         of Users.
         """
+        # NOTE: this function is not decorator-made because
+        # it has special internal use.
         params = {
             'action': 'query',
             'list': 'users',
