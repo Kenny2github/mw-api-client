@@ -2,7 +2,7 @@
 See the Wiki docstrings.
 """
 from __future__ import print_function
-#pylint: disable=too-many-lines
+#pylint: disable=too-many-lines,no-self-use
 import time
 from functools import wraps
 import requests
@@ -11,6 +11,15 @@ from .excs import WikiError
 from .misc import *
 
 def _mkgen(func):
+    """A decorator that creates a generator.
+
+    The order of things to yield is thus:
+    1. Static API parameters to use
+    2. Class to construct when yielding
+    3. Path through returned API data
+    4. Dynamic API parameters to use
+    5. Positions of positional parameters
+    """
     gen = func()
     params = gen.__next__()
     toyield = gen.__next__()
@@ -19,6 +28,7 @@ def _mkgen(func):
     positional = gen.__next__()
     @wraps(func)
     def newfunc(self, *pargs, **kwargs):
+        """New function to replace old generator"""
         last_cont = {}
         for key, (val, default) in dynamparams.items():
             try:
@@ -60,6 +70,7 @@ def _mkgen(func):
     return newfunc
 
 class Wiki(object):
+    # pylint: disable=no-self-argument
     """The base class for a wiki. Contains most API modules as methods."""
 
     def __init__(self, api_url, user_agent=None):
@@ -517,11 +528,12 @@ class Wiki(object):
         yield Page
         yield ('query', 'allfileusages')
         dynamparams = {
-            'aflimit': 'limit',
-            'afprefix': 'prefix',
+            'aflimit': ('limit', limit),
+            'afprefix': ('prefix', prefix),
         }
         yield dynamparams
         yield ('limit', 'prefix', 'getinfo')
+        return (getinfo, evil)
 
     @_mkgen
     def allimages(limit="max", prefix=None,
@@ -538,11 +550,12 @@ class Wiki(object):
         yield Page
         yield ('query', 'allimages')
         dynamparams = {
-            'ailimit': 'limit',
-            'aiprefix': 'prefix',
+            'ailimit': ('limit', limit),
+            'aiprefix': ('prefix', prefix),
         }
         yield dynamparams
         yield ('limit', 'prefix', 'getinfo')
+        return (getinfo, evil)
 
     @_mkgen
     def alllinks(limit="max", namespace='0',
@@ -557,12 +570,13 @@ class Wiki(object):
         yield Page
         yield ('query', 'alllinks')
         dynamparams = {
-            'allimit': 'limit',
-            'alprefix': 'prefix',
-            'alnamespace': 'namespace',
+            'allimit': ('limit', limit),
+            'alprefix': ('prefix', prefix),
+            'alnamespace': ('namespace', namespace),
         }
         yield dynamparams
         yield ('limit', 'namespace', 'prefix', 'getinfo')
+        return (getinfo, evil)
 
     @_mkgen
     def allpages(limit="max", namespace=0,
@@ -585,6 +599,7 @@ class Wiki(object):
         }
         yield dynamparams
         yield ('limit', 'namespace', 'prefix', 'getinfo')
+        return (getinfo, evil)
 
     def allredirects(limit="max", prefix=None,
                      getinfo=None, **evil):
@@ -603,6 +618,7 @@ class Wiki(object):
         }
         yield dynamparams
         yield ('limit', 'prefix', 'getinfo')
+        return (getinfo, evil)
 
     def allrevisions(self, limit="max", getinfo=None, **evil):
         """Retrieve a generator of all revisions."""
@@ -662,10 +678,11 @@ class Wiki(object):
         }
         yield dynamparams
         yield ('limit', 'prefix', 'getinfo')
+        return (getinfo, evil)
 
     @_mkgen
     def allusers(limit="max", prefix=None, ingroup=None, notingroup=None,
-                 withrights=None, acive=None, **evil):
+                 withrights=None, active=None, **evil):
         """Retrieve a generator of all users, each item being a dict."""
         params = {
             'action': 'query',
@@ -681,10 +698,12 @@ class Wiki(object):
             'auexcludegroup': ('notingroup', notingroup),
             'aurights': ('withrights', withrights),
             'auactiveusers': ('active', active),
+            'auprefix': ('prefix', prefix),
         }
         yield dynamparams
         yield ('limit', 'prefix', 'ingroup',
                'notingroup', 'withrights', 'active')
+        return evil
 
     @_mkgen
     def blocks(limit="max", blockip=None, users=None, **evil):
@@ -707,6 +726,7 @@ class Wiki(object):
         }
         yield dynamparams
         yield ('limit', 'blockip', 'users')
+        return evil
 
     def deletedrevs(self, limit="max", user=None,
                     namespace=None, getinfo=None, **evil):
@@ -775,12 +795,13 @@ class Wiki(object):
         yield Page
         yield ('query', 'exturlusage')
         dynamparams = {
-            'euquery': ('url', None),
-            'euprotocol': ('protocol', None),
-            'eulimit': ('limit', 'max')
+            'euquery': ('url', url),
+            'euprotocol': ('protocol', protocol),
+            'eulimit': ('limit', limit)
         }
         yield dynamparams
         yield ('limit', 'url', 'protocol', 'getinfo')
+        return (getinfo, evil)
 
     @_mkgen
     def filearchive(limit="max", prefix=None, getinfo=None, **evil):
@@ -797,11 +818,12 @@ class Wiki(object):
         yield Page
         yield ('query', 'filearchive')
         dynamparams = {
-            'falimit': ('limit', 'max'),
-            'faprefix': ('prefix', None),
+            'falimit': ('limit', limit),
+            'faprefix': ('prefix', prefix),
         }
         yield dynamparams
         yield ('limit', 'prefix', 'getinfo')
+        return (getinfo, evil)
 
     @_mkgen
     def interwikibacklinks(iwprefix, iwtitle=None,
@@ -818,12 +840,13 @@ class Wiki(object):
         yield Page
         yield ('query', 'iwbacklinks')
         dynamparams = {
-            'iwblprefix': ('iwprefix', None), #it'll error if not specified
-            'iwbltitle': ('iwtitle', None),
-            'iwbllimit': ('limit', 'max'),
+            'iwblprefix': ('iwprefix', iwprefix), #it'll error if not specified
+            'iwbltitle': ('iwtitle', iwtitle),
+            'iwbllimit': ('limit', limit),
         }
         yield dynamparams
         yield ('iwprefix', 'iwtitle', 'limit', 'getinfo')
+        return (getinfo, evil)
 
     iwbacklinks = interwikibacklinks
 
@@ -845,12 +868,13 @@ class Wiki(object):
         yield Page
         yield ('query', 'langbacklinks')
         dynamparams = {
-            'lbllang': ('langprefix', None), #it'll error anyway
-            'lbltitle': ('langtitle', None),
-            'lbllimit': ('limit', 'max'),
+            'lbllang': ('langprefix', langprefix), #it'll error anyway
+            'lbltitle': ('langtitle', langtitle),
+            'lbllimit': ('limit', limit),
         }
         yield dynamparams
         yield ('langprefix', 'langtitle', 'limit', 'getinfo')
+        return (getinfo, evil)
 
     langbacklinks = languagebacklinks
 
@@ -871,12 +895,13 @@ class Wiki(object):
         yield dict
         yield ('query', 'logevents')
         dynamparams = {
-            'leuser': ('user', None),
-            'letitle': ('title', None),
-            'lelimit': ('limit', 'max'),
+            'leuser': ('user', user),
+            'letitle': ('title', title),
+            'lelimit': ('limit', limit),
         }
         yield dynamparams
         yield ('limit', 'title', 'user')
+        return evil
 
     @_mkgen
     def pagepropnames(limit='max'):
@@ -889,7 +914,7 @@ class Wiki(object):
         yield dict
         yield ('query', 'pagepropnames')
         yield {
-            'ppnlimit': ('limit', 'max'),
+            'ppnlimit': ('limit', limit),
         }
         yield ('limit',)
 
@@ -905,11 +930,12 @@ class Wiki(object):
         yield Page
         yield ('query', 'pageswithprop')
         dynamparams = {
-            'pwppropname': ('prop', None), #it'll error anyway
-            'pwplimit': ('limit', 'max'),
+            'pwppropname': ('prop', prop), #it'll error anyway
+            'pwplimit': ('limit', limit),
         }
         yield dynamparams
         yield ('prop', 'limit')
+        return (getinfo, evil)
 
     @_mkgen
     def protectedtitles(limit="max", level=None,
@@ -929,12 +955,13 @@ class Wiki(object):
         yield Page
         yield ('query', 'protectedtitles')
         dynamparams = {
-            'ptnamespace': ('namespace', None),
-            'ptlevel': ('level', None),
-            'ptlimit': ('limit', 'max'),
+            'ptnamespace': ('namespace', namespace),
+            'ptlevel': ('level', level),
+            'ptlimit': ('limit', limit),
         }
         yield dynamparams
         yield ('limit', 'level', 'namespace', 'getinfo')
+        return (getinfo, evil)
 
     @_mkgen
     def random(limit="max", namespace=None, getinfo=None, **evil):
@@ -947,11 +974,12 @@ class Wiki(object):
         yield Page
         yield ('query', 'random')
         dynamparams = {
-            'rnnamespace': ('namespace', None),
-            'rnlimit': ('limit', 'max'),
+            'rnnamespace': ('namespace', namespace),
+            'rnlimit': ('limit', limit),
         }
         yield dynamparams
         yield ('limit', 'namespace', 'getinfo')
+        return (getinfo, evil)
 
     @_mkgen
     def recentchanges(limit=50, mostrecent=None, **evil):
@@ -966,10 +994,12 @@ sha1|sizes|redirect|loginfo|tags|flags',
         yield RecentChange
         yield ('query', 'recentchanges')
         dynamparams = {
-            'rctoponly': ('mostrecent', None),
-            'rclimit': ('limit', 50),
+            'rctoponly': ('mostrecent', mostrecent),
+            'rclimit': ('limit', limit),
         }
+        yield dynamparams
         yield ('limit', 'mostrecent')
+        return evil
 
     @_mkgen
     def search(term, limit=500, namespace=None, getinfo=None, **evil):
@@ -988,12 +1018,13 @@ redirecttitle|redirectsnippet|sectiontitle|sectionsnippet',
         yield Page
         yield ('query', 'search')
         dynamparams = {
-            'srsearch': ('term', None), #it'll error anyway
-            'srnamespace': ('namespace', None),
-            'srlimit': ('limit', 500),
+            'srsearch': ('term', term), #it'll error anyway
+            'srnamespace': ('namespace', namespace),
+            'srlimit': ('limit', limit),
         }
         yield dynamparams
         yield ('term', 'limit', 'namespace', 'getinfo')
+        return (getinfo, evil)
 
     @_mkgen
     def tags(limit='max', **evil):
@@ -1008,10 +1039,11 @@ redirecttitle|redirectsnippet|sectiontitle|sectionsnippet',
         yield Tag
         yield ('query', 'tags')
         dynamparams = {
-            'tglimit': ('limit', 'max'),
+            'tglimit': ('limit', limit),
         }
         yield dynamparams
         yield ('limit',)
+        return evil
 
     def users(self, names=None, justdata=False, **evil):
         """Retrieve details of the specified users, and generate a list
