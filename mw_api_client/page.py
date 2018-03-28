@@ -8,6 +8,7 @@ try:
 except ImportError:
     from urllib import urlencode
 import re
+from functools import wraps
 import time
 from .excs import WikiError, EditConflict
 from . import GETINFO
@@ -44,6 +45,79 @@ class _CachedAttribute(object): # pylint: disable=too-few-public-methods
         # setattr redefines the instance's attribute so this doesn't get called again
         setattr(inst, self.name, result)
         return result
+
+def _mkgen(func):
+    """A decorator that creates a generator.
+
+    The order of things to yield is thus:
+    1. Static API parameters to use
+    2. Class to construct when yielding
+    3. Path through returned API data
+    4. Dynamic API parameters to use
+    5. Positions of positional parameters
+    The ``extraself`` parameter specifies whether the page should also
+    pass itself to the ``toyield`` constructor.
+    """
+    gen = func()
+    params = gen.__next__()
+    toyield = gen.__next__()
+    path = gen.__next__()
+    dynamparams = gen.__next__()
+    positional = gen.__next__()
+    extraself = gen.__next__()
+    @wraps(func)
+    def newfunc(self, *pargs, **kwargs):
+        """New function to replace old generator"""
+        last_cont = {}
+        for key, (val, default) in dynamparams.items():
+            if val.startswith('self.'):
+                params[key] = getattr(self, val.lstrip('self.'), default)
+                if params[key] == Ellipsis: #Ellipsis signals requirement
+                    raise AttributeError(repr(val)
+                                         + 'is required but does not '
+                                         + 'exist!')
+            try:
+                params[key] = kwargs.get(val, pargs[positional.index(val)])
+            except IndexError:
+                params[key] = kwargs.get(val, default)
+            if val in kwargs:
+                del kwargs[val]
+        params.update(kwargs)
+        for key in params:
+            if key.endswith('limit'):
+                limitkey = key
+                break
+
+        while 1:
+            params.update(last_cont)
+            data = self.request(**params)
+            rootdata = data
+
+            for part in path:
+                data = data[part]
+            for thing in data:
+                if '*' in thing:
+                    thing['content'] = thing['*']
+                    del thing['*']
+                if extraself:
+                    yield toyield(self.wiki,
+                                  self,
+                                  getinfo=kwargs.get('getinfo', None),
+                                  **thing)
+                else:
+                    yield toyield(self.wiki,
+                                  getinfo=kwargs.get('getinfo', None),
+                                  **thing)
+            if params[limitkey] == 'max' \
+                   or len(data) < params[limitkey]:
+                if 'continue' in rootdata:
+                    last_cont = rootdata['continue']
+                    last_cont[limitkey] = self.wiki._wraplimit(params)
+                else:
+                    break
+            else:
+                break
+    return newfunc
 
 class Page(object):
     """The class for a page on a wiki.
@@ -353,54 +427,37 @@ class Page(object):
         self.__dict__.update(data)
         return data['categoryinfo']
 
-    def revisions(self, limit="max", **evil):
+    @_mkgen
+    def revisions(limit="max", **evil):
         """Get a generator of Revisions for this page.
 
         See https://www.mediawiki.org/wiki/API:Revisions for explanations
         of the various parameters.
         """
-        if 'diffto' in evil and 'difftotext' in evil:
-            raise ValueError('Cannot diff to revision ID and text at once.')
-
-        last_cont = {}
         params = {
             'action': 'query',
             'prop': 'revisions',
-            'titles': self.title,
             'rvprop': 'ids|flags|timestamp|user|userid|size|sha1|contentmodel|'
                       + 'comment|parsedcomment|tags',
-            'rvlimit': limit
         }
-        params.update(evil)
+        yield params
+        yield Revision
+        yield ('query', 'pages')
+        dynamparams = {
+            'titles': ('self.title', Ellipsis), #Ellipsis signals requirement
+            'rvlimit': ('limit': limit),
+        }
+        yield dynamparams
+        yield ('limit',)
+        yield True
 
-        while 1:
-            params.update(last_cont)
-            data = self.wiki.request(**params)
-
-            for revd in list(data['query']['pages'].values())[0]['revisions']:
-                if '*' in revd:
-                    revd['content'] = revd['*']
-                    del revd['*']
-                yield Revision(self.wiki, self, **revd)
-
-            if limit == 'max' \
-                   or len(list(data['query']['pages'].values())[0]['revisions'])\
-                   < params['rvlimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['rvlimit'] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-
-    def deletedrevs(self, limit="max", **evil):
+    @_mkgen
+    def deletedrevs(limit="max", **evil):
         """Get a generator of deleted Revisions for this page.
 
         See https://www.mediawiki.org/wiki/API:Deletedrevs for explanations
         of the various paraemeters.
         """
-        last_cont = {}
         params = {
             'action': 'query',
             'list': 'deletedrevs',
@@ -409,28 +466,15 @@ class Page(object):
                       + 'len|sha1|tags',
             'drlimit': limit
         }
-        params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.wiki.request(**params)
-
-            for rev_data in list(data['query']['deletedrevs'].values())[0]['revisions']:
-                if '*' in rev_data:
-                    rev_data['content'] = rev_data['*']
-                    del rev_data['*']
-                yield Revision(self.wiki, self, **rev_data)
-
-            if limit == 'max' \
-                   or len(data['query']['deletedrevs']) \
-                   < params['drlimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['drlimit'] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
+        yield params
+        yield Revision
+        yield ('query', 'deletedrevs')
+        dynamparams = {
+            'titles': ('self.title', Ellipsis),
+            'drlimit': ('limit', limit),
+        }
+        yield ('limit',)
+        yield True
 
     @property
     def url(self):
