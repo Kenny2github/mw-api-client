@@ -756,7 +756,7 @@ class User(object):
             getinfo = GETINFO
         if getinfo:
             data = self.wiki.users(self.name, justdata=True)
-            self.__dict__.update(tuple(data)[0])
+            self.__dict__.update(data)
             if currentuser:
                 self.__dict__.update(self.wiki.meta.userinfo())
 
