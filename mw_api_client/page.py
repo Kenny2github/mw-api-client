@@ -107,7 +107,7 @@ class Page(object):
 
             for part in path:
                 if part == '__page':
-                    data = list(data.values())[0]
+                    data = tuple(data.values())[0]
                 else:
                     data = data[part]
             for thing in data:
@@ -143,7 +143,7 @@ class Page(object):
                       + 'displaytitle'
         }
         data = self.wiki.request(**arguments)
-        page_data = list(data["query"]["pages"].values())[0]
+        page_data = tuple(data["query"]["pages"].values())[0]
         if 'title' in page_data:
             del page_data['title'] #don't override the title
         self.__dict__.update(page_data)
@@ -161,7 +161,7 @@ class Page(object):
             'rvlimit': "1",
         })
         try:
-            data = list(data['query']['pages'].values())[0]['revisions'][0]
+            data = tuple(data['query']['pages'].values())[0]['revisions'][0]
         except KeyError:
             self.info()
             if hasattr(self, 'missing'):
@@ -198,7 +198,7 @@ class Page(object):
                                                      '%Y-%m-%dT%H:%M:%SZ'))
             if newtimestamp > self._lasttimestamp and erroronconflict:
                 raise EditConflict('The last fetch was before \
-    the most recent revision.')
+the most recent revision.')
         except KeyError:
             pass #the page doesn't exist, so we're creating it
 
@@ -368,7 +368,7 @@ class Page(object):
 
     def rollback(self):
         """Roll back all edits by the last user."""
-        user = list(self.revisions(limit=1))[0].user
+        user = tuple(self.revisions(limit=1))[0].user
         params = {
             'action': 'rollback',
             'title': None if hasattr(self, 'pageid') else self.title,
@@ -392,7 +392,7 @@ class Page(object):
             'titles': self.title,
         }
         data = self.wiki.request(**params)
-        data = list(data['query']['pages'].values())[0]
+        data = tuple(data['query']['pages'].values())[0]
         self.__dict__.update(data)
         return data['categoryinfo']
 
@@ -708,8 +708,8 @@ class Page(object):
             'titles': self.title,
             'prop': 'pageprops',
         }
-        return list(self.wiki.request(**params)['query']['pages']
-                    .values())[0]['pageprops']
+        return tuple(self.wiki.request(**params)['query']['pages']
+                     .values())[0]['pageprops']
 
     def categories(self, limit='max', getinfo=None, **evil):
         """Get a generator of all categories used on this page."""
@@ -945,7 +945,7 @@ class Revision(object):
         }
         data = self.wiki.request(**params)
 
-        return list(data['query']['pages'].values())[0]['revisions'][0]['*']
+        return tuple(data['query']['pages'].values())[0]['revisions'][0]['*']
 
     @_CachedAttribute
     def content(self):
@@ -979,7 +979,7 @@ class Revision(object):
 
         data = self.wiki.request(**params)
 
-        return list(data['query']['pages'].values())[0]['revisions'][0]['diff']
+        return tuple(data['query']['pages'].values())[0]['revisions'][0]['diff']
 
     def patrol(self):
         """Patrol this revision."""

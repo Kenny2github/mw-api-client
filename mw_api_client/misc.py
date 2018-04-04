@@ -44,8 +44,12 @@ class RecentChange(object):
         params = {
             'action': 'tag',
             'rcid': self.rcid,
-            'add': '|'.join(add) if isinstance(add, list) else add,
-            'remove': '|'.join(remove) if isinstance(remove, list) else remove,
+            'add': ('|'.join(add)
+                    if isinstance(add, (list, tuple))
+                    else add),
+            'remove': ('|'.join(remove)
+                       if isinstance(remove, (list, tuple))
+                       else remove),
             'token': self.wiki.meta.tokens(),
             'reason': reason
         }
@@ -157,7 +161,7 @@ class Meta(object):
         }
         params.update(evil)
         data = self.wiki.request(**params)
-        return list(data['query'].values())[0]
+        return tuple(data['query'].values())[0]
 
     def allmessages(self, *args, **kwargs):
         """Though the API module is in meta, this is implemented in Wiki
