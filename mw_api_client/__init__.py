@@ -14,7 +14,7 @@ To install the latest stable version::
 
     pip install -U mw-api-client
 
-To install the latest development version::
+To install the latest development (likely unstable) version::
 
     git clone https://github.com/Kenny2github/mw-api-client.git
     cd mw-api-client
@@ -89,13 +89,12 @@ MIT Licensed.
 """
 from __future__ import print_function
 
-
-GETINFO = False
+GETINFO = False #pylint: disable=wrong-import-position
 
 from .wiki import Wiki
 from .page import Page, User, Revision
 from .excs import WikiError, EditConflict, catch
-from .misc import *
+from .misc import Tag, RecentChange, GenericData
 
 __all__ = [
     'GETINFO',
@@ -107,6 +106,5 @@ __all__ = [
     'User',
     'Revision',
     'RecentChange',
-    'Meta',
     'Tag'
 ]

@@ -8,9 +8,9 @@ try:
 except ImportError:
     from urllib import urlencode
 import re
-from functools import wraps
 import time
 from .excs import WikiError, EditConflict
+from .misc import GenericData
 from . import GETINFO
 
 __all__ = [
@@ -46,79 +46,6 @@ class _CachedAttribute(object): # pylint: disable=too-few-public-methods
         setattr(inst, self.name, result)
         return result
 
-def _mkgen(func):
-    """A decorator that creates a generator.
-
-    The order of things to yield is thus:
-    1. Static API parameters to use
-    2. Class to construct when yielding
-    3. Path through returned API data
-    4. Dynamic API parameters to use
-    5. Positions of positional parameters
-    The ``extraself`` parameter specifies whether the page should also
-    pass itself to the ``toyield`` constructor.
-    """
-    gen = func()
-    params = gen.__next__()
-    toyield = gen.__next__()
-    path = gen.__next__()
-    dynamparams = gen.__next__()
-    positional = gen.__next__()
-    extraself = gen.__next__()
-    @wraps(func)
-    def newfunc(self, *pargs, **kwargs):
-        """New function to replace old generator"""
-        last_cont = {}
-        for key, (val, default) in dynamparams.items():
-            if val.startswith('self.'):
-                params[key] = getattr(self, val.lstrip('self.'), default)
-                if params[key] == Ellipsis: #Ellipsis signals requirement
-                    raise AttributeError(repr(val)
-                                         + 'is required but does not '
-                                         + 'exist!')
-            try:
-                params[key] = kwargs.get(val, pargs[positional.index(val)])
-            except IndexError:
-                params[key] = kwargs.get(val, default)
-            if val in kwargs:
-                del kwargs[val]
-        params.update(kwargs)
-        for key in params:
-            if key.endswith('limit'):
-                limitkey = key
-                break
-
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-            rootdata = data
-
-            for part in path:
-                data = data[part]
-            for thing in data:
-                if '*' in thing:
-                    thing['content'] = thing['*']
-                    del thing['*']
-                if extraself:
-                    yield toyield(self.wiki,
-                                  self,
-                                  getinfo=kwargs.get('getinfo', None),
-                                  **thing)
-                else:
-                    yield toyield(self.wiki,
-                                  getinfo=kwargs.get('getinfo', None),
-                                  **thing)
-            if params[limitkey] == 'max' \
-                   or len(data) < params[limitkey]:
-                if 'continue' in rootdata:
-                    last_cont = rootdata['continue']
-                    last_cont[limitkey] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-    return newfunc
-
 class Page(object):
     """The class for a page on a wiki.
 
@@ -126,6 +53,7 @@ class Page(object):
 
     Pages with the "missing" attribute set evaluate to False.
     """
+    #pylint: disable=too-many-arguments
     def __init__(self, wiki, getinfo=None, **data):
         """Initialize a page with its wiki and initially don't set a title.
 
@@ -162,6 +90,47 @@ class Page(object):
         return hash(self.title)
 
     __str__ = __repr__
+
+    def _generate(self, params, toyield, path,
+                  getinfo=Ellipsis, extraself=False):
+        """Centralizes generation of API data"""
+        last_cont = {}
+        for key in params:
+            if key.endswith('limit'):
+                limitkey = key
+                break
+
+        while 1:
+            params.update(last_cont)
+            data = self.wiki.request(**params)
+            rootdata = data
+
+            for part in path:
+                if part == '__page':
+                    data = list(data.values())[0]
+                else:
+                    data = data[part]
+            for thing in data:
+                if '*' in thing:
+                    thing['content'] = thing['*']
+                    del thing['*']
+                args = [self.wiki]
+                if extraself:
+                    args.append(self)
+                if getinfo != Ellipsis:
+                    yield toyield(*args, getinfo=getinfo, **thing)
+                else:
+                    yield toyield(*args, **thing)
+            if params[limitkey] == 'max' \
+                   or len(data) < params[limitkey]:
+                if 'continue' in rootdata:
+                    last_cont = rootdata['continue']
+                    #pylint: disable=protected-access
+                    last_cont[limitkey] = self.wiki._wraplimit(params)
+                else:
+                    break
+            else:
+                break
 
     def info(self):
         """Query information about the page."""
@@ -427,9 +396,8 @@ class Page(object):
         self.__dict__.update(data)
         return data['categoryinfo']
 
-    @_mkgen
-    def revisions(limit="max", **evil):
-        """Get a generator of Revisions for this page.
+    def revisions(self, limit="max", **evil):
+        """Generate Revisions for this page.
 
         See https://www.mediawiki.org/wiki/API:Revisions for explanations
         of the various parameters.
@@ -439,21 +407,19 @@ class Page(object):
             'prop': 'revisions',
             'rvprop': 'ids|flags|timestamp|user|userid|size|sha1|contentmodel|'
                       + 'comment|parsedcomment|tags',
+            'titles': self.title,
+            'rvlimit': limit
         }
-        yield params
-        yield Revision
-        yield ('query', 'pages')
-        dynamparams = {
-            'titles': ('self.title', Ellipsis), #Ellipsis signals requirement
-            'rvlimit': ('limit': limit),
-        }
-        yield dynamparams
-        yield ('limit',)
-        yield True
+        params.update(evil)
+        return self._generate(
+            params,
+            Revision,
+            ('query', 'pages', '__page', 'revisions'),
+            extraself=True
+        )
 
-    @_mkgen
-    def deletedrevs(limit="max", **evil):
-        """Get a generator of deleted Revisions for this page.
+    def deletedrevs(self, limit="max", **evil):
+        """Generate deleted Revisions for this page.
 
         See https://www.mediawiki.org/wiki/API:Deletedrevs for explanations
         of the various paraemeters.
@@ -461,20 +427,18 @@ class Page(object):
         params = {
             'action': 'query',
             'list': 'deletedrevs',
-            'titles': self.title,
             'drprop': 'revid|parentid|user|userid|comment|parsedcomment|minor|'
                       + 'len|sha1|tags',
-            'drlimit': limit
+            'titles': self.title,
+            'drlimit': limit,
         }
-        yield params
-        yield Revision
-        yield ('query', 'deletedrevs')
-        dynamparams = {
-            'titles': ('self.title', Ellipsis),
-            'drlimit': ('limit', limit),
-        }
-        yield ('limit',)
-        yield True
+        params.update(evil)
+        return self._generate(
+            params,
+            Revision,
+            ('query', 'deletedrevs'),
+            extraself=True
+        )
 
     @property
     def url(self):
@@ -482,220 +446,121 @@ class Page(object):
         return self.wiki.site_url + urlencode({"x": self.title})[2:].replace("%2F", "/")
 
     def backlinks(self, limit="max", getinfo=None, **evil):
-        """Return a generator of Pages that link to this page."""
-        last_cont = {}
+        """Generate Pages that link to this page."""
         params = {
             'action': "query",
             'list': "backlinks",
+            'bltitle': self.title,
             'bllimit': limit,
-            'bltitle': self.title
         }
         params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.wiki.request(**params)
-
-            for page_data in data["query"]["backlinks"]:
-                if ['*'] in page_data:
-                    page_data['content'] = page_data['*']
-                    del page_data['*']
-                yield Page(self.wiki, getinfo=getinfo, **page_data)
-
-            if limit == 'max' \
-                   or len(data['query']['backlinks']) \
-                   < params['bllimit']:
-                if "continue" in data:
-                    last_cont = data["continue"]
-                    last_cont['bllimit'] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
+        return self._generate(
+            params,
+            Page,
+            ('query', 'backlinks'),
+            getinfo
+        )
 
     linkshere = backlinks #literally what is the difference?
 
     def redirects(self, limit='max', namespace=None, getinfo=None, **evil):
         """Generate redirects to this Page."""
-        last_cont = {}
+        self.info() #needed to get pageid
         params = {
             'action': 'query',
-            'titles': self.title,
             'prop': 'redirects',
+            'titles': self.title,
             'rdlimit': limit,
-            'rdnamespace': namespace
+            'rdnamespace': namespace,
         }
         params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.wiki.request(**params)
-
-            for page in list(data['query']['pages'].values())[0]['redirects']:
-                if '*' in page:
-                    page['content'] = page['*']
-                    del page['*']
-                yield Page(self.wiki, getinfo=getinfo, **page)
-
-            if limit == 'max' \
-                   or len(list(data['query']['pages'].values())[0]['redirects']) \
-                   < params['rdlimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['rdlimit'] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
+        return self._generate(
+            params,
+            Page,
+            ('query', 'pages', '__page', 'redirects'),
+            getinfo
+        )
 
     def interwikilinks(self, limit='max', fullurl=False, **evil):
         """Generate all interwiki links used by this page. If fullurl
-        is specified, format is (prefix, title, url); otherwise it's
-        (prefix, title).
+        is specified, GenericData yielded will have an extra "url" attribute.
         """
-        last_cont = {}
         params = {
             'action': 'query',
             'titles': self.title,
             'prop': 'iwlinks',
-            'iwlimit': limit
+            'iwlimit': limit,
+            'iwprop': 'url' if fullurl else None,
         }
-        if fullurl:
-            params['iwprop'] = 'url'
         params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.wiki.request(**params)
-
-            for link in list(data['query']['pages'].values())[0]['iwlinks']:
-                if fullurl:
-                    yield (link['prefix'], link['*'], link['url'])
-                else:
-                    yield (link['prefix'], link['*'])
-
-            if limit == 'max' \
-                   or len(list(data['query']['pages'].values())[0]['iwlinks']) \
-                   < params['iwlimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['iwlimit'] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
+        return self._generate(
+            params,
+            GenericData,
+            ('query', 'pages', '__page', 'iwlinks'),
+        )
 
     iwlinks = interwikilinks
 
-    def languagelinks(self, limit='max', fullurl=False, **evil):
+    def languagelinks(self, limit='max', fullurl=True, **evil):
         """Generate all inter-language links used on this page.
-        The yield format is (prefix, title, url) if fullurl is specified,
-        otherwise it's (prefix, title).
+        The yield format is (prefix, title, url).
         """
-        last_cont = {}
         params = {
             'action': 'query',
-            'titles': self.title,
             'prop': 'languagelinks',
-            'lllimit': limit
+            'llprop': 'langname|autonym'
+                      + ('|url' if fullurl else ''),
+            'titles': self.title,
+            'lllimit': limit,
         }
-        if fullurl:
-            params['llprop'] = 'url'
         params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.wiki.request(**params)
-
-            for link in list(data['query']['pages'].values())[0]['langlinks']:
-                if fullurl:
-                    yield (link['lang'], link['*'], link['url'])
-                else:
-                    yield (link['lang'], link['*'])
-
-            if limit == 'max' \
-                   or len(list(data['query']['pages'].values())[0]['langlinks']) \
-                   < params['lllimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['lllimit'] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
+        return self._generate(
+            params,
+            GenericData,
+            ('query', 'pages', '__page', 'langlinks'),
+        )
 
     langlinks = languagelinks
 
     def links(self, limit='max', namespace=None, getinfo=None, **evil):
         """Generate Pages that this Page links to."""
-        last_cont = {}
         params = {
             'action': 'query',
-            'titles': self.title,
             'prop': 'links',
+            'titles': self.title,
             'plnamespace': namespace,
-            'pllimit': limit
+            'pllimit': limit,
         }
         params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.wiki.request(**params)
-
-            for page in list(data['query']['pages'].values())[0]['links']:
-                if '*' in page:
-                    page['content'] = page['*']
-                    del page['*']
-                yield Page(self.wiki, getinfo=getinfo, **page)
-
-            if limit == 'max' \
-               or len(list(data['query']['pages'].values())[0]['links']) \
-               < params['pllimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['pllimit'] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
+        return self._generate(
+            params,
+            Page,
+            ('query', 'pages', '__page', 'links'),
+            getinfo
+        )
 
     def extlinks(self, limit='max', protocol=None, query=None, **evil):
         """Generate all external links this Page uses. Yield format is
         simply the URL.
         """
-        last_cont = {}
         params = {
             'action': 'query',
-            'titles': self.title,
             'prop': 'extlinks',
+            'elexpandurl': True,
+            'titles': self.title,
             'ellimit': limit,
             'elprotocol': protocol,
             'elquery': query,
-            'elexpandurl': True
         }
         params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.wiki.request(**params)
-
-            for link in list(data['query']['pages'].values())[0]['extlinks']:
-                yield link['*']
-
-            if limit == 'max' \
-                   or len(list(data['query']['pages'].values())[0]['extlinks']) \
-                   < params['ellimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['ellimit'] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
+        return self._generate(
+            params,
+            GenericData,
+            ('query', 'pages', '__page', 'extlinks'),
+        )
 
     def transclusions(self, limit="max", namespace=None, getinfo=None, **evil):
-        """Return a generator of Pages that transclude this page."""
-        last_cont = {}
+        """Generate Pages that transclude this page."""
         params = {
             'action': "query",
             'list': "embeddedin",
@@ -704,104 +569,52 @@ class Page(object):
             'einamespace': namespace,
         }
         params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.wiki.request(**params)
-
-            for page_data in data["query"]["embeddedin"]:
-                if '*' in page_data:
-                    page_data['content'] = page_data['*']
-                    del page_data['*']
-                yield Page(self.wiki, getinfo=getinfo, **page_data)
-
-            if limit == 'max' \
-                   or len(data['query']['embeddedin']) \
-                   < params['eilimit']:
-                if "continue" in data:
-                    last_cont = data["continue"]
-                    last_cont['eilimit'] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
+        return self._generate(
+            params,
+            Page,
+            ('query', 'embeddedin'),
+            getinfo
+        )
 
     embeddedin = transcludedin = transclusions #WHAT is the DIFFERENCE?
 
     def templates(self, limit='max', namespace=None, getinfo=None, **evil):
         """Generate Pages that this Page transcludes."""
-        last_cont = {}
         params = {
             'action': 'query',
-            'titles': self.title,
             'prop': 'templates',
+            'titles': self.title,
             'tlnamespace': namespace,
             'tllimit': limit,
         }
         params.update(evil)
+        return self._generate(
+            params,
+            Page,
+            ('query', 'pages', '__page', 'templates'),
+            getinfo
+        )
 
-        while 1:
-            params.update(last_cont)
-            data = self.wiki.request(**params)
-
-            for page in list(data['query']['pages'].values())[0]['templates']:
-                if '*' in page:
-                    page['content'] = page['*']
-                    del page['*']
-                yield Page(self.wiki, getinfo=getinfo, **page)
-
-            if limit == 'max' \
-                   or len(list(data['query']['pages'].values())[0]['templates']) \
-                   < params['tllimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['tllimit'] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-
-    def categorymembers(self, limit="max", getinfo=None, **evil):
-        """Return a generator of Pages in this category."""
-        if not self.title.startswith("Category:"):
-            raise ValueError('Page is not a category.')
-
-        last_cont = {}
+    def categorymembers(self, limit="max", namespace=None, getinfo=None, **evil):
+        """Generate Pages in this category."""
         params = {
             'action': 'query',
             'list': 'categorymembers',
+            'cmprop': 'ids|title|sortkey|sortkeyprefix|type|timestamp',
             'cmtitle': self.title,
             'cmlimit': limit,
+            'cmnamespace': namespace,
         }
         params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.wiki.request(**params)
-
-            for page in data["query"]["categorymembers"]:
-                if '*' in page:
-                    page['content'] = page['*']
-                    del page['*']
-                yield Page(self.wiki, getinfo=getinfo, **page)
-
-            if limit == 'max' \
-                   or len(data['query']['categorymembers']) \
-                   < params['cmlimit']:
-                if "continue" in data:
-                    last_cont = data["continue"]
-                    last_cont['cmlimit'] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
+        return self._generate(
+            params,
+            Page,
+            ('query', 'categorymembers'),
+            getinfo
+        )
 
     def imageusage(self, limit="max", namespace=None, getinfo=None, **evil):
-        """Return a generator of Pages that link to this image."""
-        if not self.title.startswith("File:"):
-            raise ValueError('Page is not a file')
-
-        last_cont = {}
+        """Generate Pages that link to this image."""
         params = {
             'action': 'query',
             'list': 'imageusage',
@@ -810,27 +623,12 @@ class Page(object):
             'iulimit': limit
         }
         params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.wiki.request(**params)
-
-            for page in data['query']['imageusage']:
-                if '*' in page:
-                    page['content'] = page['*']
-                    del page['*']
-                yield Page(self.wiki, getinfo=getinfo, **page)
-
-            if limit == 'max' \
-                   or len(data['query']['imageusage']) \
-                   < params['iulimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['iulimit'] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
+        return self._generate(
+            params,
+            Page,
+            ('query', 'imageusage'),
+            getinfo
+        )
 
     def fileusage(self, limit='max', namespace=None, getinfo=None, **evil):
         """Generate Pages that link to this File. TODO: figure out what
@@ -839,7 +637,6 @@ class Page(object):
         if not self.title.startswith('File:'):
             raise ValueError('Page is not a file')
 
-        last_cont = {}
         params = {
             'action': 'query',
             'titles': self.title,
@@ -849,31 +646,15 @@ class Page(object):
             'fulimit': limit,
         }
         params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.wiki.request(**params)
-
-            for page in list(data['query']['pages'].values())[0]['fileusage']:
-                if '*' in page:
-                    page['content'] = page['*']
-                    del page['*']
-                yield Page(self.wiki, getinfo=getinfo, **page)
-
-            if limit == 'max' \
-                   or len(list(data['query']['pages'].values())[0]['fileusage']) \
-                   < params['fulimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['fulimit'] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
+        return self._generate(
+            params,
+            Page,
+            ('query', 'pages', '__page', 'fileusage'),
+            getinfo
+        )
 
     def images(self, limit='max', getinfo=None, **evil):
         """Generate Pages based on what images this Page uses."""
-        last_cont = {}
         params = {
             'action': 'query',
             'titles': self.title,
@@ -881,34 +662,18 @@ class Page(object):
             'imlimit': limit
         }
         params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.wiki.request(**params)
-
-            for page in list(data['query']['pages'].values())[0]['images']:
-                if '*' in page:
-                    page['content'] = page['*']
-                    del page['*']
-                yield Page(self.wiki, getinfo=getinfo, **page)
-
-            if limit == 'max' \
-                   or len(list(data['query']['pages'].values())[0]['images']) \
-                   < params['imlimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['imlimit'] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
+        return self._generate(
+            params,
+            Page,
+            ('query', 'pages', '__page', 'images'),
+            getinfo
+        )
 
     def duplicatefiles(self, limit='max', getinfo=None, **evil):
         """Generate duplicates of this file."""
         if not self.title.startswith("File:"):
             raise ValueError('Page is not a file')
 
-        last_cont = {}
         params = {
             'action': 'query',
             'prop': 'duplicatefiles',
@@ -916,30 +681,15 @@ class Page(object):
             'dflimit': limit
         }
         params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.wiki.request(**params)
-
-            for page in list(data['query']['pages'].values())[0]['duplicatefiles']:
-                if '*' in page:
-                    page['content'] = page['*']
-                    del page['*']
-                yield Page(self.wiki, getinfo=getinfo, title=page['name'])
-
-            if limit == 'max' \
-                   or len(list(data['query']['pages'].values())[0]['duplicatefiles']) \
-                   < params['dflimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['dflimit'] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
+        return self._generate(
+            params,
+            Page,
+            ('query', 'pages', '__page', 'duplicatefiles'),
+            getinfo
+        )
 
     def pagepropnames(self):
-        """Retrieve a generator of property names for this page."""
+        """Generate property names for this page."""
         params = {
             'action': 'query',
             'list': 'pagepropnames',
@@ -963,7 +713,6 @@ class Page(object):
 
     def categories(self, limit='max', getinfo=None, **evil):
         """Get a generator of all categories used on this page."""
-        last_cont = {}
         params = {
             'action': 'query',
             'titles': self.title,
@@ -972,31 +721,15 @@ class Page(object):
             'cllimit': limit
         }
         params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.wiki.request(**params)
-
-            for page in list(data['query']['pages'].values())[0]['categories']:
-                if '*' in page:
-                    page['content'] = page['*']
-                    del page['*']
-                yield Page(self.wiki, getinfo=getinfo, **page)
-
-            if limit == 'max' \
-                   or len(list(data['query']['pages'].values())[0]['categories']) \
-                   < params['cllimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['cllimit'] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
+        return self._generate(
+            params,
+            Page,
+            ('query', 'pages', '__page', 'categories'),
+            getinfo
+        )
 
     def contributors(self, limit='max', getinfo=None, **evil):
         """Get a generator of contributors to this page."""
-        last_cont = {}
         params = {
             'action': 'query',
             'titles': self.title,
@@ -1004,24 +737,12 @@ class Page(object):
             'pclimit': limit
         }
         params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.wiki.request(**params)
-
-            for usr in list(data['query']['pages'].values())[0]['contributors']:
-                yield User(self.wiki, getinfo=getinfo, **usr)
-
-            if limit == 'max' \
-                   or len(list(data['query']['pages'].values())[0]['contributors']) \
-                   < params['pclimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['pclimit'] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
+        return self._generate(
+            params,
+            User,
+            ('query', 'pages', '__page', 'contributors'),
+            getinfo
+        )
 
 class User(object):
     """A user on a wiki."""
@@ -1136,6 +857,7 @@ flags|tags',
                    < params['uclimit']:
                 if 'continue' in data:
                     last_cont = data['continue']
+                    #pylint: disable=protected-access
                     last_cont['uclimit'] = self.wiki._wraplimit(params)
                 else:
                     break
@@ -1174,7 +896,7 @@ flags|tags',
         }
         if capture:
             params['capture'] = True
-        data = self.post_request(**params)
+        data = self.wiki.post_request(**params)
         if capture:
             return data['resetpassword']['passwords'][self.name]
         return data['resetpassword']['status']
@@ -1303,4 +1025,4 @@ class Revision(object):
             hide.append('user')
         params['show'] = '|'.join(show)
         params['hide'] = '|'.join(hide)
-        return self.post_request(**params)['revisiondelete']['status']
+        return self.wiki.post_request(**params)['revisiondelete']['status']

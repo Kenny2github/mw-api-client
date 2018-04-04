@@ -28,7 +28,7 @@ class TestWiki(TestCase):
     def test_blocks(self):
         """Assert that Wiki.blocks yields block data."""
         for block in WP.blocks(limit=10):
-            self.assertTrue(isinstance(block, dict))
+            self.assertTrue(isinstance(block, mw.GenericData))
     def test_random(self):
         """Assert that Wiki.random yields Pages."""
         for page in WP.random(limit=10):

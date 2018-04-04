@@ -1,6 +1,4 @@
 """This submodule contains the small classes."""
-from __future__ import print_function
-from .page import Page
 
 class RecentChange(object):
     """A recent change. Used *specifically* for Wiki.recentchanges."""
@@ -127,46 +125,6 @@ class Meta(object):
         data = self.wiki.request(**params)
         return data['query']['userinfo']
 
-    def allmessages(self, limit='max', messages='*', args=None,
-                    getinfo=None, **evil):
-        """Retrieve a list of all interface messages.
-
-        The "messages" parameter specifies what messages to retrieve (default all).
-
-        The "args" parameter specifies a list of arguments to substitute
-        into the messages.
-
-        See https://www.mediawiki.org/wiki/API:Allmessages for details about
-        other parameters.
-        """
-        last_cont = {}
-        params = {
-            'action': 'query',
-            'meta': 'allmessages',
-            'ammessages': '|'.join(messages) if isinstance(messages, list) else messages,
-            'amargs': '|'.join(args) if isinstance(args, list) else args,
-            'amprefix': evil.get('prefix'),
-        }
-        params.update(evil)
-
-        while 1:
-            params.update(last_cont)
-            data = self.wiki.request(**params)
-
-            for page_data in data['query']['allmessages']:
-                yield Page(self.wiki, getinfo=getinfo, **page_data)
-
-            if limit == 'max' \
-                   or len(data['query']['allmessages']) \
-                   < params['amlimit']:
-                if 'continue' in data:
-                    last_cont = data['continue']
-                    last_cont['amlimit'] = self.wiki._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-
     def filerepoinfo(self, prop=None, **evil):
         """Retrieve information about the site's file repositories.
 
@@ -200,3 +158,38 @@ class Meta(object):
         params.update(evil)
         data = self.wiki.request(**params)
         return list(data['query'].values())[0]
+
+    def allmessages(self, *args, **kwargs):
+        """Though the API module is in meta, this is implemented in Wiki
+        due to importing ambiguities.
+        """
+        return self.wiki.allmessages(*args, **kwargs)
+
+class GenericData(object): #pylint: disable=too-few-public-methods
+    """A hunk of random API data
+    that is not widely used enough to deserve its own class.
+    """
+    def __init__(self, _, **data):
+        """Initialize the data by copying kwargs to __dict__"""
+        self.__dict__.update(data)
+
+    def __repr__(self):
+        """Represent some GenericData."""
+        result = '<GenericData: '
+        result += repr(self.__dict__)
+        result += '>'
+        return result
+
+    __str__ = __repr__
+
+    def __getitem__(self, key):
+        """Get an attribute like a dict item."""
+        return self.__dict__.__getitem__(key)
+
+    def __setitem__(self, key, val):
+        """Set an attribute like a dict item."""
+        return self.__dict__.__setitem__(key, val)
+
+    def __delitem__(self, key):
+        """Del an attribute like a dict item."""
+        return self.__dict__.__delitem__(key)

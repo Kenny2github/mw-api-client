@@ -1,6 +1,5 @@
 from __future__ import print_function
-import os
-from setuptools import setup, Command
+from setuptools import setup
 from re import match, S
 
 with open('mw_api_client\\__init__.py', 'r') as f:
@@ -8,32 +7,9 @@ with open('mw_api_client\\__init__.py', 'r') as f:
 with open('README.rst', 'w') as f2:
     f2.write(longdesc)
 
-class PylintCommand(Command):
-    user_options = [('rcfile', 'r', 'Other pylint rcfile to use',)]
-    def initialize_options(self):
-        self.pylint_rcfile = ''
-
-    def finalize_options(self):
-        if self.pylint_rcfile:
-            assert os.path.exists(self.pylint_rcfile), \
-                   'Specified config not found!'
-
-    def run(self):
-        command = 'python -m pylint '
-        if self.pylint_rcfile:
-            command += '--rcfile=' + self.pylint_rcfile + ' '
-        status = 'OK'
-        for pyfile in os.listdir('mw_api_client'):
-            if pyfile.endswith('.py'):
-                if os.system(command + 'mw_api_client\\' + pyfile) != 0:
-                    status = 'FAIL'
-        print()
-        print(status)
-
 setup(
-    cmdclass={'pylint': PylintCommand},
     name="mw-api-client",
-    version="3.0.0a2",
+    version="3.0.0rc1",
     description="A simple MediaWiki client.",
     long_description=longdesc,
     url="https://github.com/Kenny2github/mw-api-client",

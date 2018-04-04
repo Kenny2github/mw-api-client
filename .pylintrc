@@ -54,8 +54,7 @@ confidence=
 # --enable=similarities". If you want to run only the classes checker, but have
 # no Warning level messages displayed, use"--disable=all --enable=classes
 # --disable=W"
-disable=wrong-import-position,
-        no-member,
+disable=no-member,
         print-statement,
         parameter-unpacking,
         unpacking-in-except,
@@ -74,11 +73,9 @@ disable=wrong-import-position,
         suppressed-message,
         useless-suppression,
         deprecated-pragma,
+        duplicate-code,
         too-many-public-methods,
         too-many-branches,
-        too-many-arguments,
-        protected-access,
-        wildcard-import,
         apply-builtin,
         basestring-builtin,
         buffer-builtin,

@@ -2,75 +2,15 @@
 See the Wiki docstrings.
 """
 from __future__ import print_function
-#pylint: disable=too-many-lines,no-self-use
+#pylint: disable=too-many-lines
 import time
-from functools import wraps
 import requests
 from .page import Page, User, Revision
 from .excs import WikiError
-from .misc import *
+from .misc import Tag, RecentChange, Meta, GenericData
 
-def _mkgen(func):
-    """A decorator that creates a generator.
-
-    The order of things to yield is thus:
-    1. Static API parameters to use
-    2. Class to construct when yielding
-    3. Path through returned API data
-    4. Dynamic API parameters to use
-    5. Positions of positional parameters
-    """
-    gen = func()
-    params = gen.__next__()
-    toyield = gen.__next__()
-    path = gen.__next__()
-    dynamparams = gen.__next__()
-    positional = gen.__next__()
-    @wraps(func)
-    def newfunc(self, *pargs, **kwargs):
-        """New function to replace old generator"""
-        last_cont = {}
-        for key, (val, default) in dynamparams.items():
-            try:
-                params[key] = kwargs.get(val, pargs[positional.index(val)])
-            except IndexError:
-                params[key] = kwargs.get(val, default)
-            if val in kwargs:
-                del kwargs[val]
-        params.update(kwargs) #required parameters gone, remaining: evil        limitkey = 'limit'
-        for key in params:
-            if key.endswith('limit'):
-                limitkey = key
-                break
-
-        while 1:
-            params.update(last_cont)
-            data = self.request(**params)
-            rootdata = data
-
-            for part in path:
-                data = data[part]
-            for thing in data:
-                if '*' in thing:
-                    thing['content'] = thing['*']
-                    del thing['*']
-                yield toyield(self,
-                              getinfo=kwargs.get('getinfo', None),
-                              **thing)
-            if params[limitkey] == 'max' \
-                   or len(data) < params[limitkey]:
-                if 'continue' in rootdata:
-                    last_cont = rootdata['continue']
-                    last_cont[limitkey] = self._wraplimit(params)
-                else:
-                    break
-            else:
-                break
-
-    return newfunc
-
-class Wiki(object):
-    # pylint: disable=no-self-argument
+class Wiki(object): #pylint: disable=too-many-public-methods
+    #pylint: disable=too-many-arguments
     """The base class for a wiki. Contains most API modules as methods."""
 
     def __init__(self, api_url, user_agent=None):
@@ -85,7 +25,7 @@ class Wiki(object):
         if user_agent is not None:
             self.user_agent = user_agent
         else:
-            self.user_agent = "mw_api_client/2.0.0, python-requests/>=2.18.4"
+            self.user_agent = "mw_api_client/3.0.0, python-requests/>=2.18.4"
         self.meta = Meta(self)
         self._session = requests.session()
         data = self.meta.siteinfo()
@@ -103,9 +43,44 @@ class Wiki(object):
 
     def __hash__(self):
         """Wiki.__hash__() <==> hash(Wiki)"""
-        return hash(self.wiki_url)
+        return hash(self.api_url)
 
     __str__ = __repr__
+
+    def _generate(self, params, toyield, path, getinfo=Ellipsis):
+        """Centralize generation of API data."""
+        last_cont = {}
+        limitkey = 'limit'
+        for key in params:
+            if key.endswith('limit'):
+                limitkey = key
+                break
+
+        while 1:
+            params.update(last_cont)
+            data = self.request(**params)
+            rootdata = data
+
+            for part in path:
+                data = data[part]
+            for thing in data:
+                if '*' in thing:
+                    thing['content'] = thing['*']
+                    del thing['*']
+                if getinfo != Ellipsis:
+                    yield toyield(self, getinfo=getinfo, **thing)
+                else:
+                    yield toyield(self, **thing)
+
+            if params[limitkey] == 'max' \
+                   or len(data) < params[limitkey]:
+                if 'continue' in rootdata:
+                    last_cont = rootdata['continue']
+                    last_cont[limitkey] = self._wraplimit(params)
+                else:
+                    break
+            else:
+                break
 
     def _wraplimit(self, kwds):
         module = kwds['action'] + '+' + kwds.get('list', kwds.get('prop', kwds.get('meta')))
@@ -267,7 +242,7 @@ class Wiki(object):
     def logout(self): #simple enough lol
         """Log out the current user."""
         self.currentuser = None
-        return self.post_request(**{'action': 'logout'})
+        return self.post_request(action='logout')
 
     def page(self, title, **evil):
         """Return a Page instance based off of the title of the page."""
@@ -439,8 +414,8 @@ class Wiki(object):
         return self.post_request(**params)
 
     def allcategories(self, limit="max", prefix=None, getinfo=None, **evil):
-        """Retrieve a generator of all categories represented as Pages."""
-        # NOTE: this function is not decorator-made because it
+        """Generate all categories represented as Pages."""
+        # NOTE: this function does not use _generate because it
         # has a special API data format - the * value is the title,
         # not the content.
         last_cont = {}
@@ -473,9 +448,8 @@ class Wiki(object):
                 break
 
     def alldeletedrevisions(self, limit="max", prefix=None, getinfo=None, **evil):
-        """Retrieve a generator of all deleted Revisions."""
-        # NOTE: this function is not decorator-made because it
-        # uses nested loops.
+        """Generate all deleted Revisions."""
+        # NOTE: this function does not use _generate because it uses nested loops
         last_cont = {}
         params = {
             'action': 'query',
@@ -516,113 +490,139 @@ class Wiki(object):
             else:
                 break
 
-    @_mkgen
-    def allfileusages(limit="max", prefix=None, getinfo=None, **evil):
-        """Retrieve a generator of Pages corresponding to all file usages."""
+    def allfileusages(self, limit="max", prefix=None, getinfo=None, **evil):
+        """Generate Pages corresponding to all file usages."""
         params = {
             'action': 'query',
             'list': 'allfileusages',
             'afprop': 'ids|titles',
+            'aflimit': limit,
+            'afprefix': prefix,
         }
-        yield params
-        yield Page
-        yield ('query', 'allfileusages')
-        dynamparams = {
-            'aflimit': ('limit', limit),
-            'afprefix': ('prefix', prefix),
-        }
-        yield dynamparams
-        yield ('limit', 'prefix', 'getinfo')
-        return (getinfo, evil)
+        params.update(evil)
+        return self._generate(
+            params,
+            Page,
+            ('query', 'allfileusages'),
+            getinfo
+        )
 
-    @_mkgen
-    def allimages(limit="max", prefix=None,
-                  getinfo=None, **evil):
-        """Retrieve a generator of all images represented as Pages."""
+    def allimages(self, limit="max", prefix=None, getinfo=None, **evil):
+        """Generate all images represented as Pages."""
         params = {
             'action': 'query',
             'list': 'allimages',
             'aiprop': 'timestamp|user|userid|comment|parsedcomment|'
                       + 'canonicaltitle|url|size|sha1|mime|mediatype|'
-                      + 'metadata|commonmetadata|extmetadata|bitdepth'
+                      + 'metadata|commonmetadata|extmetadata|bitdepth',
+            'ailimit': limit,
+            'aiprefix': prefix,
         }
-        yield params
-        yield Page
-        yield ('query', 'allimages')
-        dynamparams = {
-            'ailimit': ('limit', limit),
-            'aiprefix': ('prefix', prefix),
-        }
-        yield dynamparams
-        yield ('limit', 'prefix', 'getinfo')
-        return (getinfo, evil)
+        params.update(evil)
+        return self._generate(
+            params,
+            Page,
+            ('query', 'allimages'),
+            getinfo
+        )
 
-    @_mkgen
-    def alllinks(limit="max", namespace='0',
+    def alllinks(self, limit="max", namespace=0,
                  prefix=None, getinfo=None, **evil):
-        """Retrieve a generator of all links."""
+        """Generate all links."""
         params = {
             'action': 'query',
             'list': 'alllinks',
             'alprop': 'ids|title',
+            'allimit': limit,
+            'alprefix': prefix,
+            'alnamespace': namespace,
         }
-        yield params
-        yield Page
-        yield ('query', 'alllinks')
-        dynamparams = {
-            'allimit': ('limit', limit),
-            'alprefix': ('prefix', prefix),
-            'alnamespace': ('namespace', namespace),
-        }
-        yield dynamparams
-        yield ('limit', 'namespace', 'prefix', 'getinfo')
-        return (getinfo, evil)
+        params.update(evil)
+        return self._generate(
+            params,
+            Page,
+            ('query', 'alllinks'),
+            getinfo
+        )
 
-    @_mkgen
-    def allpages(limit="max", namespace=0,
+    def allmessages(self, limit='max', messages='*', args=None,
+                    prefix=None, getinfo=None, **evil):
+        """Generate all interface messages.
+
+        The "messages" parameter specifies what messages to retrieve
+        (default all).
+
+        The "args" parameter specifies a list of arguments to substitute
+        into the messages.
+
+        The "prefix" parameter specifies a common prefix for the messages'
+        titles.
+
+        See https://www.mediawiki.org/wiki/API:Allmessages for details about
+        other parameters.
+        """
+        params = {
+            'action': 'query',
+            'meta': 'allmessages',
+            'ammessages': ('|'.join(messages)
+                           if isinstance(messages, list)
+                           else messages),
+            'amargs': ('|'.join(args)
+                       if isinstance(args, list)
+                       else args),
+            'amprefix': prefix,
+            'amlimit': limit,
+        }
+        params.update(evil)
+        return self._generate(
+            params,
+            Page,
+            ('query', 'allmessages'),
+            getinfo
+        )
+
+    def allpages(self, limit=100, namespace=0,
                  prefix=None, getinfo=None, **evil):
-        """Retrieve a generator of all Pages.
+        """Generate all Pages.
 
-        NOTE: This may take a long time on very large wikis!
+        Default limit is 100 rather than "max" as "max" can take a long time,
+        especially if "getinfo" is True.
         """
         params = {
             'action': 'query',
             'list': 'allpages',
+            'aplimit': limit,
+            'apprefix': prefix,
+            'apnamespace': namespace,
         }
-        yield params
-        yield Page
-        yield ('query', 'allpages')
-        dynamparams = {
-            'aplimit': ('limit', limit),
-            'apprefix': ('prefix', prefix),
-            'apnamespace': ('namespace', namespace)
-        }
-        yield dynamparams
-        yield ('limit', 'namespace', 'prefix', 'getinfo')
-        return (getinfo, evil)
+        params.update(evil)
+        return self._generate(
+            params,
+            Page,
+            ('query', 'allpages'),
+            getinfo
+        )
 
-    def allredirects(limit="max", prefix=None,
-                     getinfo=None, **evil):
-        """Retrieve a generator of all Pages that are redirects."""
+    def allredirects(self, limit="max", prefix=None, getinfo=None, **evil):
+        """Generate all Pages that are redirects."""
         params = {
             'action': 'query',
             'list': 'allredirects',
             'arprop': 'ids|title|fragment|interwiki',
+            'arprefix': prefix,
+            'arlimit': limit,
         }
-        yield params
-        yield Page
-        yield ('query', 'allredirects')
-        dynamparams = {
-            'arprefix': ('prefix', prefix),
-            'arlimit': ('limit', limit),
-        }
-        yield dynamparams
-        yield ('limit', 'prefix', 'getinfo')
-        return (getinfo, evil)
+        params.update(evil)
+        return self._generate(
+            params,
+            Page,
+            ('query', 'allredirects'),
+            getinfo
+        )
 
     def allrevisions(self, limit="max", getinfo=None, **evil):
-        """Retrieve a generator of all revisions."""
-        # NOTE: this function is not decorator-made because
+        """Generate all revisions."""
+        # NOTE: this function does not use _generate because
         # it uses nested loops.
         last_cont = {}
         params = {
@@ -660,77 +660,77 @@ class Wiki(object):
             else:
                 break
 
-    @_mkgen
-    def alltransclusions(limit="max", prefix=None,
-                         getinfo=None, **evil):
-        """Retrieve a generator of all transclusions."""
+    def alltransclusions(self, limit="max", prefix=None, getinfo=None, **evil):
+        """Generate all transclusions."""
         params = {
             'action': 'query',
             'list': 'alltransclusions',
             'atprop': 'title|ids',
+            'atprefix': prefix,
+            'atlimit': limit,
         }
-        yield params
-        yield Page
-        yield ('query', 'alltransclusions')
-        dynamparams = {
-            'atprefix': ('prefix', prefix),
-            'atlimit': ('limit', limit),
-        }
-        yield dynamparams
-        yield ('limit', 'prefix', 'getinfo')
-        return (getinfo, evil)
+        params.update(evil)
+        return self._generate(
+            params,
+            Page,
+            ('query', 'alltransclusions'),
+            getinfo
+        )
 
-    @_mkgen
-    def allusers(limit="max", prefix=None, ingroup=None, notingroup=None,
-                 withrights=None, active=None, **evil):
-        """Retrieve a generator of all users, each item being a dict."""
+    def allusers(self, limit="max", prefix=None, ingroup=None,
+                 notingroup=None, withrights=None, active=None, **evil):
+        """Generate all Users.
+
+        ``prefix`` specifies a common prefix for usernames.
+        ``ingroup`` specifies a usergroup that generated Users must be in.
+        ``notingroup`` specifies a usergroup that generated Users must not
+        be in.
+        ``withrights`` specifies userrights that generated Users must possess.
+        ``active`` specifies that generated Users must be "active"
+        (see Special:ActiveUsers for the definition of "active").
+        """
         params = {
             'action': 'query',
             'list': 'allusers',
             'auprop': 'blockinfo|groups|implicitgroups|rights|editcount'
-                      + '|registration'
+                      + '|registration',
+            'augroup': ingroup,
+            'auexcludegroup': notingroup,
+            'aurights': withrights,
+            'auactiveusers': active,
+            'auprefix': prefix,
+            'aulimit': limit,
         }
-        yield params
-        yield User
-        yield ('query', 'allusers')
-        dynamparams = {
-            'augroup': ('ingroup', ingroup),
-            'auexcludegroup': ('notingroup', notingroup),
-            'aurights': ('withrights', withrights),
-            'auactiveusers': ('active', active),
-            'auprefix': ('prefix', prefix),
-        }
-        yield dynamparams
-        yield ('limit', 'prefix', 'ingroup',
-               'notingroup', 'withrights', 'active')
-        return evil
+        params.update(evil)
+        return self._generate(
+            params,
+            User,
+            ('query', 'allusers'),
+        )
 
-    @_mkgen
-    def blocks(limit="max", blockip=None, users=None, **evil):
-        """Retrieve a generator of currently active blocks, each item being
-        a dict.
-        """
+    def blocks(self, limit="max", blockip=None, users=None, **evil):
+        """Generate currently active blocks."""
+        if blockip is not None and users is not None:
+            raise ValueError('Cannot specify ``blockip`` and ``users`` at once.')
         params = {
             'action': 'query',
             'list': 'blocks',
             'bkprop': 'id|user|userid|by|byid|timestamp|expiry|reason|range|'
-                      + 'flags'
+                      + 'flags',
+            'bkip': blockip,
+            'bkusers': users,
+            'bklimit': limit,
         }
-        yield params
-        yield dict
-        yield ('query', 'blocks')
-        dynamparams = {
-            'bkip': ('blockip', blockip),
-            'bkusers': ('users', users),
-            'bklimit': ('limit', limit),
-        }
-        yield dynamparams
-        yield ('limit', 'blockip', 'users')
-        return evil
+        params.update(evil)
+        return self._generate(
+            params,
+            GenericData,
+            ('query', 'blocks'),
+        )
 
     def deletedrevs(self, limit="max", user=None,
                     namespace=None, getinfo=None, **evil):
-        """Retrieve a generator of all deleted Revisions.
+        """Generate all deleted Revisions.
 
         This can be deleted user contributions (specify "user") or
         deleted revisions in a certain namespace (specify "namespace")
@@ -778,10 +778,9 @@ class Wiki(object):
             else:
                 break
 
-    @_mkgen
-    def exturlusage(limit="max", url=None, protocol=None,
-                    getinfo=None, **evil):
-        """Retrieve a generator of Pages that link to a particular URL or
+    def exturlusage(self, limit="max", url=None,
+                    protocol=None, getinfo=None, **evil):
+        """Generate Pages that link to a particular URL or
         protocol, or simply external links in general.
 
         These pages will have an extra attribute, `url`, that shows what
@@ -790,22 +789,20 @@ class Wiki(object):
         params = {
             'action': 'query',
             'list': 'exturlusage',
+            'euquery': url,
+            'euprotocol': protocol,
+            'eulimit': limit,
         }
-        yield params
-        yield Page
-        yield ('query', 'exturlusage')
-        dynamparams = {
-            'euquery': ('url', url),
-            'euprotocol': ('protocol', protocol),
-            'eulimit': ('limit', limit)
-        }
-        yield dynamparams
-        yield ('limit', 'url', 'protocol', 'getinfo')
-        return (getinfo, evil)
+        params.update(evil)
+        return self._generate(
+            params,
+            Page,
+            ('query', 'exturlusage'),
+            getinfo
+        )
 
-    @_mkgen
-    def filearchive(limit="max", prefix=None, getinfo=None, **evil):
-        """Retrieve a generator of deleted files, represented as Pages."""
+    def filearchive(self, limit="max", prefix=None, getinfo=None, **evil):
+        """Generate deleted files, represented as Pages."""
         params = {
             'action': 'query',
             'list': 'filearchive',
@@ -814,46 +811,40 @@ class Wiki(object):
             'falimit': limit,
             'faprefix': prefix
         }
-        yield params
-        yield Page
-        yield ('query', 'filearchive')
-        dynamparams = {
-            'falimit': ('limit', limit),
-            'faprefix': ('prefix', prefix),
-        }
-        yield dynamparams
-        yield ('limit', 'prefix', 'getinfo')
-        return (getinfo, evil)
+        params.update(evil)
+        return self._generate(
+            params,
+            Page,
+            ('query', 'filearchive'),
+            getinfo
+        )
 
-    @_mkgen
-    def interwikibacklinks(iwprefix, iwtitle=None,
+    def interwikibacklinks(self, iwprefix, iwtitle=None,
                            limit="max", getinfo=None, **evil):
-        """Retrieve a generator of Pages that link to a particular
+        """Generate Pages that link to a particular
         interwiki prefix (and title, if specified)
         """
         params = {
             'action': 'query',
             'list': 'iwbacklinks',
-            'iwblprop': 'iwprefix|iwtitle'
+            'iwblprop': 'iwprefix|iwtitle',
+            'iwblprefix': iwprefix,
+            'iwbltitle': iwtitle,
+            'iwbllimit': limit,
         }
-        yield params
-        yield Page
-        yield ('query', 'iwbacklinks')
-        dynamparams = {
-            'iwblprefix': ('iwprefix', iwprefix), #it'll error if not specified
-            'iwbltitle': ('iwtitle', iwtitle),
-            'iwbllimit': ('limit', limit),
-        }
-        yield dynamparams
-        yield ('iwprefix', 'iwtitle', 'limit', 'getinfo')
-        return (getinfo, evil)
+        params.update(evil)
+        return self._generate(
+            params,
+            Page,
+            ('query', 'iwbacklinks'),
+            getinfo
+        )
 
     iwbacklinks = interwikibacklinks
 
-    @_mkgen
-    def languagebacklinks(langprefix, langtitle=None,
+    def languagebacklinks(self, langprefix, langtitle=None,
                           limit="max", getinfo=None, **evil):
-        """Retrieve a generator of Pages that link to a particular language
+        """Generate Pages that link to a particular language
         code (and title, if specified)
         """
         params = {
@@ -864,23 +855,18 @@ class Wiki(object):
             'lbllimit': limit,
             'lblprop': 'lllang|lltitle'
         }
-        yield params
-        yield Page
-        yield ('query', 'langbacklinks')
-        dynamparams = {
-            'lbllang': ('langprefix', langprefix), #it'll error anyway
-            'lbltitle': ('langtitle', langtitle),
-            'lbllimit': ('limit', limit),
-        }
-        yield dynamparams
-        yield ('langprefix', 'langtitle', 'limit', 'getinfo')
-        return (getinfo, evil)
+        params.update(evil)
+        return self._generate(
+            params,
+            Page,
+            ('query', 'langbacklinks'),
+            getinfo
+        )
 
     langbacklinks = languagebacklinks
 
-    @_mkgen
-    def logevents(limit="max", title=None, user=None, **evil):
-        """Retrieve a generator of log events, each event being a dict.
+    def logevents(self, limit="max", title=None, user=None, **evil):
+        """Generate log events.
 
         For more information on results, see:
         https://www.mediawiki.org/wiki/API:Logevents
@@ -890,57 +876,51 @@ class Wiki(object):
             'list': 'logevents',
             'leprop': 'ids|title|type|user|userid|timestamp|comment|'
                       + 'parsedcomment|details|tags',
+            'leuser': user.name if isinstance(user, User) else user,
+            'letitle': title.title if isinstance(title, Page) else title,
+            'lelimit': limit,
         }
-        yield params
-        yield dict
-        yield ('query', 'logevents')
-        dynamparams = {
-            'leuser': ('user', user),
-            'letitle': ('title', title),
-            'lelimit': ('limit', limit),
-        }
-        yield dynamparams
-        yield ('limit', 'title', 'user')
-        return evil
+        params.update(evil)
+        return self._generate(
+            params,
+            GenericData,
+            ('query', 'logevents'),
+        )
 
-    @_mkgen
-    def pagepropnames(limit='max'):
-        """Retrieve a generator of all possible page properties."""
+    def pagepropnames(self, limit='max', **evil):
+        """Generate all possible page properties."""
         params = {
             'action': 'query',
             'list': 'pagepropnames',
+            'ppnlimit': limit,
         }
-        yield params
-        yield dict
-        yield ('query', 'pagepropnames')
-        yield {
-            'ppnlimit': ('limit', limit),
-        }
-        yield ('limit',)
+        params.update(evil)
+        return self._generate(
+            params,
+            GenericData,
+            ('query', 'pagepropnames'),
+        )
 
-    @_mkgen
-    def pageswithprop(prop, limit="max", getinfo=None, **evil):
-        """Retrieve a generator of Pages with a particular property."""
+    def pageswithprop(self, prop, limit="max", getinfo=None, **evil):
+        """Generate Pages with a particular property."""
         params = {
             'action': 'query',
             'list': 'pageswithprop',
             'pwpprop': 'ids|title|value',
+            'pwppropname': prop,
+            'pwplimit': limit,
         }
-        yield params
-        yield Page
-        yield ('query', 'pageswithprop')
-        dynamparams = {
-            'pwppropname': ('prop', prop), #it'll error anyway
-            'pwplimit': ('limit', limit),
-        }
-        yield dynamparams
-        yield ('prop', 'limit')
-        return (getinfo, evil)
+        params.update(evil)
+        return self._generate(
+            params,
+            Page,
+            ('query', 'pageswithprop'),
+            getinfo
+        )
 
-    @_mkgen
-    def protectedtitles(limit="max", level=None,
+    def protectedtitles(self, limit="max", level=None,
                         namespace=None, getinfo=None, **evil):
-        """Retrieve a generator of Pages protected from creation.
+        """Generate Pages protected from creation.
 
         This means that all of the Pages returned will have the "missing"
         attribute set.
@@ -950,60 +930,53 @@ class Wiki(object):
             'list': 'protectedtitles',
             'ptprop': 'timestamp|user|userid|comment|'
                       + 'parsedcomment|expiry|level',
+            'ptnamespace': namespace,
+            'ptlevel': level,
+            'ptlimit': limit,
         }
-        yield params
-        yield Page
-        yield ('query', 'protectedtitles')
-        dynamparams = {
-            'ptnamespace': ('namespace', namespace),
-            'ptlevel': ('level', level),
-            'ptlimit': ('limit', limit),
-        }
-        yield dynamparams
-        yield ('limit', 'level', 'namespace', 'getinfo')
-        return (getinfo, evil)
+        params.update(evil)
+        return self._generate(
+            params,
+            Page,
+            ('query', 'protectedtitles'),
+            getinfo
+        )
 
-    @_mkgen
-    def random(limit="max", namespace=None, getinfo=None, **evil):
-        """Retrieve a generator of random Pages."""
+    def random(self, limit="max", namespace=None, getinfo=None, **evil):
+        """Generate random Pages."""
         params = {
             'action': 'query',
             'list': 'random',
+            'rnnamespace': namespace,
+            'rnlimit': limit,
         }
-        yield params
-        yield Page
-        yield ('query', 'random')
-        dynamparams = {
-            'rnnamespace': ('namespace', namespace),
-            'rnlimit': ('limit', limit),
-        }
-        yield dynamparams
-        yield ('limit', 'namespace', 'getinfo')
-        return (getinfo, evil)
+        params.update(evil)
+        return self._generate(
+            params,
+            Page,
+            ('query', 'random'),
+            getinfo
+        )
 
-    @_mkgen
-    def recentchanges(limit=50, mostrecent=None, **evil):
+    def recentchanges(self, limit=50, mostrecent=None, **evil):
         """Retrieve recent changes on the wiki, a la Special:RecentChanges"""
         params = {
             'action': 'query',
             'list': 'recentchanges',
             'rcprop': 'user|userid|comment|parsedcomment|timestamp|title|ids|\
 sha1|sizes|redirect|loginfo|tags|flags',
+            'rctoponly': mostrecent,
+            'rclimit': limit,
         }
-        yield params
-        yield RecentChange
-        yield ('query', 'recentchanges')
-        dynamparams = {
-            'rctoponly': ('mostrecent', mostrecent),
-            'rclimit': ('limit', limit),
-        }
-        yield dynamparams
-        yield ('limit', 'mostrecent')
-        return evil
+        params.update(evil)
+        return self._generate(
+            params,
+            RecentChange,
+            ('query', 'recentchanges'),
+        )
 
-    @_mkgen
-    def search(term, limit=500, namespace=None, getinfo=None, **evil):
-        """Search page titles (or content, if `what` is 'text') for `term`.
+    def search(self, term, limit=500, namespace=None, getinfo=None, **evil):
+        """Search page titles for `term`.
 
         Specify `namespace` to only search in that/those namespace(s).
         """
@@ -1013,21 +986,19 @@ sha1|sizes|redirect|loginfo|tags|flags',
             'srwhat': 'title|text|nearmatch',
             'srprop': 'size|wordcount|timestamp|score|snippet|titlesnippet|\
 redirecttitle|redirectsnippet|sectiontitle|sectionsnippet',
+            'srsearch': term,
+            'srnamespace': namespace,
+            'srlimit': limit,
         }
-        yield params
-        yield Page
-        yield ('query', 'search')
-        dynamparams = {
-            'srsearch': ('term', term), #it'll error anyway
-            'srnamespace': ('namespace', namespace),
-            'srlimit': ('limit', limit),
-        }
-        yield dynamparams
-        yield ('term', 'limit', 'namespace', 'getinfo')
-        return (getinfo, evil)
+        params.update(evil)
+        return self._generate(
+            params,
+            Page,
+            ('query', 'search'),
+            getinfo
+        )
 
-    @_mkgen
-    def tags(limit='max', **evil):
+    def tags(self, limit='max', **evil):
         """Retrieve a generator of Tags on this wiki, a la Special:Tags."""
         params = {
             'action': 'query',
@@ -1035,22 +1006,17 @@ redirecttitle|redirectsnippet|sectiontitle|sectionsnippet',
             'tglimit': limit,
             'tgprop': 'name|displayname|description|hitcount'
         }
-        yield params
-        yield Tag
-        yield ('query', 'tags')
-        dynamparams = {
-            'tglimit': ('limit', limit),
-        }
-        yield dynamparams
-        yield ('limit',)
-        return evil
+        params.update(evil)
+        return self._generate(
+            params,
+            Tag,
+            ('query', 'tags'),
+        )
 
     def users(self, names=None, justdata=False, **evil):
         """Retrieve details of the specified users, and generate a list
         of Users.
         """
-        # NOTE: this function is not decorator-made because
-        # it has special internal use.
         params = {
             'action': 'query',
             'list': 'users',
@@ -1059,11 +1025,10 @@ redirecttitle|redirectsnippet|sectiontitle|sectionsnippet',
                       + 'editcount|registration|emailable|gender',
         }
         params.update(evil)
-
-        data = self.request(**params)
         if justdata:
-            for userinfo in data['query']['users']:
-                yield userinfo
-            return
-        for userinfo in data['query']['users']:
-            yield User(self, currentuser=False, getinfo=False, **userinfo)
+            return self.request(**params)['query']['users'][0]
+        return self._generate(
+            params,
+            User,
+            ('query', 'users')
+        )
