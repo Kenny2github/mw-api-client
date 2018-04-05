@@ -96,6 +96,8 @@ from .page import Page, User, Revision
 from .excs import WikiError, EditConflict, catch
 from .misc import Tag, RecentChange, GenericData
 
+__version__ = '3.0.0rc3'
+
 __all__ = [
     'GETINFO',
     'WikiError',
