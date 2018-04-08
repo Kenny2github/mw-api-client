@@ -4,7 +4,7 @@ from re import match, S
 with open('mw_api_client\\__init__.py', 'r') as f:
     contents = f.read()
     longdesc = match('^"""(.*?)"""', contents, S).group(1)
-    version = match(r'__version__\s*=\s*[\'"]([^\'"]+)[\'"]').group(1)
+    version = match(r'__version__\s*=\s*[\'"]([^\'"]+)[\'"]', contents).group(1)
     del contents
 
 with open('README.rst', 'w') as f2:
