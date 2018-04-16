@@ -7,8 +7,8 @@ To catch a permission error:
 ..code-block:: python
 
     def denied(exc):
-        print('Permission denied:', exc)
-    with mw.catch('permissiondenied', denied):
+        print('Page is protected:', exc)
+    with mw.catch('protectedpage', denied):
         page.edit(contents, summary)
 
 To catch an edit conflict, however, use the following:

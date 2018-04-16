@@ -18,7 +18,7 @@ To install the latest development (likely unstable) version::
 
     git clone https://github.com/Kenny2github/mw-api-client.git
     cd mw-api-client
-    pip install -e .
+    python setup.py install
 
 Example Usage
 =============

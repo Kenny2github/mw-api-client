@@ -440,11 +440,6 @@ the most recent revision.')
             extraself=True
         )
 
-    @property
-    def url(self):
-        """Return an approximation of the canonical URL for the page."""
-        return self.wiki.site_url + urlencode({"x": self.title})[2:].replace("%2F", "/")
-
     def backlinks(self, limit="max", getinfo=None, **evil):
         """Generate Pages that link to this page."""
         params = {

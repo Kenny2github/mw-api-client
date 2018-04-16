@@ -30,7 +30,6 @@ class Wiki(object): #pylint: disable=too-many-public-methods
         self._session = requests.session()
         data = self.meta.siteinfo()
         self.wiki_url = data['server']
-        self.site_url = data['server'] + data['articlepath'].replace('$1', '')
         self.currentuser = None
 
     def __repr__(self):
