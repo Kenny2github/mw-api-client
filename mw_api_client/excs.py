@@ -19,7 +19,8 @@ To catch an edit conflict, however, use the following:
         contents = page.read()
         page.edit(contents + 'hi', summary)
     except mw.EditConflict:
-        # handle edit conflict
+        # handling the edit conflict
+        # is left as an exercise for the reader
 """
 from contextlib import contextmanager
 

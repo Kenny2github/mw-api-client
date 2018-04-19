@@ -95,18 +95,20 @@ from .wiki import Wiki
 from .page import Page, User, Revision
 from .excs import WikiError, EditConflict, catch
 from .misc import Tag, RecentChange, GenericData
+from .qyoo import Queue
 
-__version__ = '3.0.0rc3'
+__version__ = '3.0.0rc4'
 
 __all__ = [
-    'GETINFO',
-    'WikiError',
     'EditConflict',
-    'catch',
-    'Wiki',
+    'GETINFO',
     'Page',
-    'User',
-    'Revision',
+    'Queue',
     'RecentChange',
-    'Tag'
+    'Revision',
+    'Tag',
+    'User',
+    'Wiki',
+    'WikiError',
+    'catch'
 ]
