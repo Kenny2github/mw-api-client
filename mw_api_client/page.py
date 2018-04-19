@@ -54,7 +54,7 @@ class Page(object):
     Pages with the "missing" attribute set evaluate to False.
     """
     #pylint: disable=too-many-arguments
-    def __init__(self, wiki, getinfo=None, **data):
+    def __init__(self, wiki, title=None, getinfo=None, **data):
         """Initialize a page with its wiki and initially don't set a title.
 
         The Wiki class sets the title automatically, since the Page __init__
@@ -64,7 +64,7 @@ class Page(object):
         If `getinfo` is None, use the module default (defined by GETINFO)
         """
         self.wiki = wiki
-        self.title = None
+        self.title = title
         self.__dict__.update(data)
         if getinfo is None:
             getinfo = GETINFO
@@ -741,10 +741,11 @@ the most recent revision.')
 
 class User(object):
     """A user on a wiki."""
-    def __init__(self, wiki, currentuser=False, getinfo=None, **userinfo):
+    def __init__(self, wiki, name=None, currentuser=False,
+                 getinfo=None, **userinfo):
         """Initialize the instance with its wiki and update its info."""
         self.wiki = wiki
-        self.name = None
+        self.name = name
         self.currentuser = currentuser
         self.__dict__.update(userinfo)
         if getinfo is None:
@@ -901,18 +902,15 @@ class Revision(object):
 
     Must be initialized with a Wiki and Page instance.
     """
-    def __init__(self, wiki, page, **data):
+    def __init__(self, wiki, page, revid=None, **data):
         """Initialize a revision with its wiki and page.
 
         Initially does not set a revision ID, since the Page/Wiki classes
         pass that in data, which updates the __dict__.
         """
         self.wiki = wiki
-        if not isinstance(page, Page):
-            self.page = Page(self.wiki, title=page)
-        else:
-            self.page = page
-        self.revid = None
+        self.page = wiki.page(page) #use what Wiki does
+        self.revid = revid
         self.__dict__.update(data)
 
     def __repr__(self):
