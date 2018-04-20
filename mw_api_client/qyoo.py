@@ -16,7 +16,7 @@ Example use:
 
 Use for efficiency in batch processing.
 """
-from .page import Page, Revision
+from .page import Page, Revision, User
 
 class Queue(object):
     """A Queue makes batch processing of similarly-structured information
@@ -59,6 +59,14 @@ class Queue(object):
             return thing
         return cls(wiki, things, check_is_rev)
 
+    def _check_type(self, typeobj):
+        for thing in self:
+            if not isinstance(thing, typeobj):
+                raise TypeError('Item is not {}: {}'.format(
+                    typeobj.__name__,
+                    repr(thing)
+                ))
+
     def __iadd__(self, thing):
         """Add something to this Queue (optionally using += syntax)."""
         self._things += self._converter(thing)
@@ -87,7 +95,6 @@ class Queue(object):
         """Convert a list of dictionaries to a list of ``cls1``s, whose ``key``
         attribute is a list of ``cls2``s.
         """
-        print(iterable)
         result = []
         if isinstance(iterable, dict):
             iterable = iterable.values() #ugh when will format JSONv2 come out
@@ -138,7 +145,7 @@ class Queue(object):
         return result
 
     #time for more API methods :D
-    def categories(self, limit='max', hidden=0):
+    def categories(self, limit='max', hidden=0, **evil):
         """Return a list of Pages with lists of categories represented as
         more Pages. The Queue must contain only Pages.
 
@@ -146,14 +153,11 @@ class Queue(object):
         hidden (1), must not be hidden (-1), or can be either (0, default).
         """
         #typecheck
-        for thing in self:
-            if not isinstance(thing, Page):
-                raise TypeError('Item is not Page: ' + repr(thing))
+        self._check_type(Page)
         titles = ''
         for page in self:
             titles += page.title + '|'
         titles = titles.strip('|')
-        print(titles)
 
         last_cont = {}
         params = {
@@ -168,4 +172,36 @@ class Queue(object):
                              else None)),
             'cllimit': int(limit) if limit != 'max' else limit
         }
+        params.update(evil)
         return self._mklist(params, 'categories', Page, Page)
+
+    def categoryinfo(self, **evil):
+        """Return a list of Pages with category information. The Queue must
+        contain only Pages.
+        """
+        self._check_type(Page)
+        titles=''
+        for page in self:
+            titles += page.title + '|'
+        titles = titles.strip('|')
+
+        params = {
+            'action': 'query',
+            'titles': titles,
+            'prop': 'categoryinfo',
+        }
+        params.update(evil)
+        data = self.request(**params)
+        result = []
+        for page_data in data['query']['pages']:
+            result.append(Page(self.wiki, **page_data))
+            result[-1].__dict__.update(result[-1].categoryinfo)
+            del result[-1].categoryinfo
+        return result
+
+    def contributors(self, limit='max', **evil):
+        """Return a list of Users that contributed to Pages in this Queue.
+        The Queue must contain only Pages.
+        """
+        self._check_type(Page)
+        raise NotImplementedError('stub')
