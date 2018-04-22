@@ -59,13 +59,18 @@ class Queue(object):
             return thing
         return cls(wiki, things, check_is_rev)
 
-    def _check_type(self, typeobj):
+    def _check_type(self, typeobj, attr=None):
+        things = ''
         for thing in self:
             if not isinstance(thing, typeobj):
                 raise TypeError('Item is not {}: {}'.format(
                     typeobj.__name__,
                     repr(thing)
                 ))
+            if attr is not None:
+                things += str(getattr(thing, attr)) + '|'
+        things.strip('|')
+        return things
 
     def __iadd__(self, thing):
         """Add something to this Queue (optionally using += syntax)."""
@@ -153,13 +158,8 @@ class Queue(object):
         hidden (1), must not be hidden (-1), or can be either (0, default).
         """
         #typecheck
-        self._check_type(Page)
-        titles = ''
-        for page in self:
-            titles += page.title + '|'
-        titles = titles.strip('|')
+        titles = self._check_type(Page, 'title')
 
-        last_cont = {}
         params = {
             'action': 'query',
             'titles': titles,
@@ -179,11 +179,7 @@ class Queue(object):
         """Return a list of Pages with category information. The Queue must
         contain only Pages.
         """
-        self._check_type(Page)
-        titles=''
-        for page in self:
-            titles += page.title + '|'
-        titles = titles.strip('|')
+        titles = self._check_type(Page, 'title')
 
         params = {
             'action': 'query',
@@ -203,5 +199,109 @@ class Queue(object):
         """Return a list of Users that contributed to Pages in this Queue.
         The Queue must contain only Pages.
         """
-        self._check_type(Page)
-        raise NotImplementedError('stub')
+        titles = self._check_type(Page, 'title')
+
+        params = {
+            'action': 'query',
+            'titles': titles,
+            'prop': 'contributors',
+            'pclimit': limit,
+        }
+        params.update(evil)
+        return self._mklist(params, 'contributors', Page, User)
+
+    def deletedrevisions(self, limit='max', **evil):
+        """Return a list of deleted Revisions of Pages in this Queue.
+        The Queue must contain only Pages.
+        """
+        titles = self._check_type(Page, 'title')
+
+        params = {
+            'action': 'query',
+            'titles': titles,
+            'prop': 'deletedrevisions',
+            'drvlimit': limit,
+        }
+        params.update(evil)
+        return self._mklist(params, 'deletedrevisions', Page, Revision)
+
+    def duplicatefiles(self, limit='max', localonly=None, **evil):
+        """Return a list of duplicates of files in this Queue.
+        The Queue must contain only Pages.
+
+        It is your responsibility to ensure that all of the Pages are treated
+        as files in your wiki.
+        """
+        titles = self._check_type(Page, 'title')
+
+        params = {
+            'action': 'query',
+            'titles': titles,
+            'prop': 'duplicatefiles',
+            'dflimit': limit,
+            'dflocalonly': localonly,
+        }
+        params.update(evil)
+        return self._mklist(params, 'duplicatefiles', Page, Page)
+
+    def extlinks(self, limit='max', protocol=None, query=None, **evil):
+        """Return a list of external links used by Pages in this Queue.
+        The Queue must contain only Pages.
+        """
+        titles = self._check_type(Page, 'title')
+
+        params = {
+            'action': 'query',
+            'titles': titles,
+            'prop': 'extlinks',
+            'elexpandurl': True,
+            'ellimit': limit,
+            'elprotocol': protocol,
+            'elquery': query,
+        }
+        params.update(evil)
+        return self._mklist(params, 'extlinks', Page, dict)
+
+    def fileusage(self, limit='max', **evil):
+        """Return a list of files used by Pages in this Queue.
+        The Queue must contain only Pages.
+        """
+        titles = self._check_type(Page, 'title')
+
+        params = {
+            'action': 'query',
+            'titles': titles,
+            'prop': 'fileusage',
+            'fuprop': 'pageid|title|redirect',
+            'fulimit': limit,
+        }
+        params.update(evil)
+        return self._mklist(params, 'fileusage', Page, Page)
+
+    def imageinfo(self, *_, **evil):
+        """Not implemented due to the API module's insanity and pending deprecation."""
+        raise NotImplementedError("This module is not implemented due to the \
+corresponding API module's insanity, instability, and pending deprecation.")
+
+    def images(self, limit='max', images=None):
+        """Return a list of images used by Pages in this Queue.
+        The Queue must contain only Pages.
+        """
+        titles = self._check_type(Page, 'title')
+        if not isinstance(images, str) and images is not None:
+            images = list(iter(images))
+            if isinstance(images[0], Page):
+                images = list(page.title for page in images)
+            else:
+                images = list(str(page) for page in images)
+            images = '|'.join(images)
+
+        params = {
+            'action': 'query',
+            'titles': titles,
+            'prop': 'images',
+            'imlimit': limit,
+            'imimages': images,
+        }
+        params.update(evil)
+        return self._mklist(params, 'images', Page, Page)

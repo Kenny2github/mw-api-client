@@ -238,6 +238,25 @@ class Wiki(object): #pylint: disable=too-many-public-methods
                                 currentuser=True, getinfo=True)
         return data
 
+    def clientlogin(self, username, password):
+        """Log in as a client.
+
+        NOTE: This does not yet implement the full clientlogin API;
+        use Wiki.request as required for your specific wiki.
+        """
+        lgtoken = self.meta.tokens('login')
+        params = {
+            'action': 'clientlogin',
+            'username': username,
+            'password': password,
+            'logintoken': lgtoken,
+            'loginreturnurl': self.api_url
+        }
+        data = self.post_request(**params)['clientlogin']
+        self.currentuser = User(self, name=username,
+                                currentuser=True, getinfo=True)
+        return data
+
     def logout(self): #simple enough lol
         """Log out the current user."""
         self.currentuser = None
