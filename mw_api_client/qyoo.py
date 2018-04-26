@@ -17,6 +17,7 @@ Example use:
 Use for efficiency in batch processing.
 """
 from .page import Page, Revision, User
+from .misc import GenericData
 
 class Queue(object):
     """A Queue makes batch processing of similarly-structured information
@@ -260,7 +261,7 @@ class Queue(object):
             'elquery': query,
         }
         params.update(evil)
-        return self._mklist(params, 'extlinks', Page, dict)
+        return self._mklist(params, 'extlinks', Page, GenericData)
 
     def fileusage(self, limit='max', **evil):
         """Return a list of files used by Pages in this Queue.
@@ -305,3 +306,97 @@ corresponding API module's insanity, instability, and pending deprecation.")
         }
         params.update(evil)
         return self._mklist(params, 'images', Page, Page)
+
+    def info(self, testactions=None, **evil):
+        """Return a list of Pages in this Queue. with their info updated.
+        The Queue must contain only Pages.
+        """
+        titles = self._check_type(Page, 'title')
+        params = {
+            'action': 'query',
+            'titles': titles,
+            'prop': 'info',
+            'inprop': 'protection|talkid|watched|watchers|visitingwatchers|\
+notificationtimestamp|subjectid|url|readable|preload|displaytitle',
+            'intestactions': (testactions
+                              if isinstance(testactions, str)
+                              else '|'.join(testactions))
+        }
+        params.update(evil)
+        data = self.wiki.request(**params)
+        result = []
+        for page_data in data['query']['pages'].values():
+            result.append(Page(self.wiki, getinfo=False, **page_data))
+        return result
+
+    def iwlinks(self, prefix, limit='max', title=None, **evil):
+        """Return a list of interwiki links from Pages in this Queue.
+        The Queue must contain only Pages.
+        """
+        titles = self._check_type(Page, 'title')
+        params = {
+            'action': 'query',
+            'titles': titles,
+            'prop': 'iwlinks',
+            'iwprop': 'url',
+            'iwprefix': prefix,
+            'iwtitle': title,
+            'iwlimit': limit,
+        }
+        params.update(evil)
+        return self._mklist(params, 'iwlinks', Page, GenericData)
+
+    interwikilinks = iwlinks
+
+    def langlinks(self, limit='max', lang=None, title=None, inlang=None, **evil):
+        """Return a list of language links from Pages in this Queue.
+        The Queue must contain only Pages.
+        """
+        titles = self._check_type(Page, 'title')
+        params = {
+            'action': 'query',
+            'titles': titles,
+            'prop': 'langlinks',
+            'llprop': 'url|langname|autonym',
+            'lllang': lang,
+            'lltitle': title,
+            'llinlanguagecode': inlang,
+            'lllimit': limit
+        }
+        params.update(evil)
+        return self._mklist(params, 'langlinks', Page, GenericData)
+
+    languagelinks = langlinks
+
+    def links(self, limit='max', namespace=None, linktitles=None, **evil):
+        """Return a list of Pages that Pages in this Queue link to.
+        The Queue must contain only Pages.
+        """
+        titles = self._check_type(Page, 'title')
+        params = {
+            'action': 'query',
+            'titles': titles,
+            'prop': 'links',
+            'plnamespace': namespace,
+            'pltitles': (titles
+                         if isinstance(titles, str)
+                         else '|'.join(titles)),
+            'pllimit': limit,
+        }
+        params.update(evil)
+        return self._mklist(params, 'links', Page, Page)
+
+    def linkshere(self, limit='max', namespace=None, **evil):
+        """Return a list of Pages that link to Pages in this Queue.
+        The Queue must contain only Pages.
+        """
+        titles = self._check_type(Page, 'title')
+        params = {
+            'action': 'query',
+            'titles': titles,
+            'lhprop': 'pageid|title|redirect',
+            'lhnamespace': namespace,
+            'lhlimit': limit,
+        }
+        params.update(evil)
+        return self._mklist(params, 'linkshere', Page, Page)
