@@ -1045,8 +1045,5 @@ redirecttitle|redirectsnippet|sectiontitle|sectionsnippet',
         params.update(evil)
         if justdata:
             return self.request(**params)['query']['users'][0]
-        return self._generate(
-            params,
-            User,
-            ('query', 'users')
-        )
+        for user_data in self.request(**params)['query']['users']:
+            yield User(self, **user_data)
