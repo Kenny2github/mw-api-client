@@ -46,6 +46,7 @@ class Queue(object):
     def frompages(cls, wiki, things=[]):
         """Set up the Queue, typechecking each item in it as a Page."""
         def check_is_page(thing):
+            """Check if an item is a page."""
             if not isinstance(thing, Page):
                 raise TypeError('Item is not Page: ' + repr(thing))
             return thing
@@ -55,6 +56,7 @@ class Queue(object):
     def fromrevisions(cls, wiki, things=[]):
         """Set up the Queue, typechecking each item in it as a Page."""
         def check_is_rev(thing):
+            """Check if an item is a revision."""
             if not isinstance(thing, Revision):
                 raise TypeError('Item is not Revision: ' + repr(thing))
             return thing
@@ -284,7 +286,7 @@ class Queue(object):
         raise NotImplementedError("This module is not implemented due to the \
 corresponding API module's insanity, instability, and pending deprecation.")
 
-    def images(self, limit='max', images=None):
+    def images(self, limit='max', images=None, *_, **evil):
         """Return a list of images used by Pages in this Queue.
         The Queue must contain only Pages.
         """
