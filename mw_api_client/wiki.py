@@ -201,7 +201,8 @@ class Wiki(object): #pylint: disable=too-many-public-methods
         return self.post_request(files=files, **params)
 
     def import_(self, source, summary=None, iwpage=None,
-                namespace=None, rootpage=None):
+                namespace=None, rootpage=None, fullhistory=False,
+                templates=False):
         """Import a page into the wiki.
         `source` can either be a file object or an interwiki prefix.
         """
@@ -217,6 +218,10 @@ class Wiki(object): #pylint: disable=too-many-public-methods
         if isinstance(source, str):
             params['interwikisource'] = source
             return self.post_request(**params)
+        if fullhistory:
+            params['fullhistory'] = fullhistory
+        if templates:
+            params['templates'] = templates
         files = {'xml': source}
         return self.post_request(files=files, **params)
 
@@ -796,7 +801,7 @@ class Wiki(object): #pylint: disable=too-many-public-methods
             else:
                 break
 
-    def exturlusage(self, limit="max", url=None,
+    def exturlusage(self, limit="max", namespace=None, url=None,
                     protocol=None, getinfo=None, **evil):
         """Generate Pages that link to a particular URL or
         protocol, or simply external links in general.
@@ -809,6 +814,7 @@ class Wiki(object): #pylint: disable=too-many-public-methods
             'list': 'exturlusage',
             'euquery': url,
             'euprotocol': protocol,
+            'eunamespace': namespace,
             'eulimit': limit,
         }
         params.update(evil)
@@ -976,7 +982,7 @@ class Wiki(object): #pylint: disable=too-many-public-methods
             getinfo
         )
 
-    def recentchanges(self, limit=50, mostrecent=None, **evil):
+    def recentchanges(self, limit=50, namespace=None, mostrecent=None, **evil):
         """Retrieve recent changes on the wiki, a la Special:RecentChanges"""
         params = {
             'action': 'query',
@@ -984,6 +990,7 @@ class Wiki(object): #pylint: disable=too-many-public-methods
             'rcprop': 'user|userid|comment|parsedcomment|timestamp|title|ids|\
 sha1|sizes|redirect|loginfo|tags|flags',
             'rctoponly': mostrecent,
+            'rcnamespace': namespace,
             'rclimit': limit,
         }
         params.update(evil)
