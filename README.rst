@@ -77,7 +77,7 @@ Patrol all recent changes in the Help namespace:
 
 .. code-block:: python
 
-    rcs = wp.recentchanges(namespace=12)
+    rcs = wp.recentchanges(rcnamespace=12)
 
     for rc in rcs:
         rc.patrol()

@@ -3,10 +3,6 @@ This submodule contains the Page and User objects.
 """
 from __future__ import print_function
 # pylint: disable=too-many-lines
-try:
-    from urllib.parse import urlencode
-except ImportError:
-    from urllib import urlencode
 import re
 import time
 from .excs import WikiError, EditConflict
@@ -751,7 +747,7 @@ class User(object):
         if getinfo is None:
             getinfo = GETINFO
         if getinfo:
-            data = self.wiki.users(self.name, justdata=True)
+            data = next(self.wiki.users(self.name, justdata=True))
             self.__dict__.update(data)
             if currentuser:
                 self.__dict__.update(self.wiki.meta.userinfo())

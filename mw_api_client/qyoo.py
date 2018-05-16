@@ -18,13 +18,14 @@ Use for efficiency in batch processing.
 """
 from .page import Page, Revision, User
 from .misc import GenericData
+#pylint: disable=protected-access
 
 class Queue(object):
     """A Queue makes batch processing of similarly-structured information
     about wiki data easier by fetching all data in one request.
     """
 
-    def __init__(self, wiki, things=[], converter=None):
+    def __init__(self, wiki, things=None, converter=None):
         """Set up the Queue, optionally initialized with an iterable.
 
         ``converter`` is an optional function to call on every item in
@@ -32,33 +33,35 @@ class Queue(object):
         to Queue(mywiki, list(map([bunch, of, things], func))).
         """
         self._converter = (lambda i: i) if converter is None else converter
-        self._things = list(map(self._converter, things))
+        self._things = list(map(self._converter, things or []))
         self.wiki = wiki
 
     @classmethod
-    def fromtitles(cls, wiki, things=[]):
+    def fromtitles(cls, wiki, things=None):
         """Set up the Queue, optionally initialized with an iterable,
         all of whose arguments will be converted to a Page if possible.
         """
-        return cls(wiki, things, wiki.page)
+        return cls(wiki, things or [], wiki.page)
 
     @classmethod
-    def frompages(cls, wiki, things=[]):
+    def frompages(cls, wiki, things=None):
         """Set up the Queue, typechecking each item in it as a Page."""
         def check_is_page(thing):
+            """Check if ``thing`` is a Page."""
             if not isinstance(thing, Page):
                 raise TypeError('Item is not Page: ' + repr(thing))
             return thing
-        return cls(wiki, things, check_is_page)
+        return cls(wiki, things or [], check_is_page)
 
     @classmethod
-    def fromrevisions(cls, wiki, things=[]):
+    def fromrevisions(cls, wiki, things=None):
         """Set up the Queue, typechecking each item in it as a Page."""
         def check_is_rev(thing):
+            """Check if ``thing`` is a Revision."""
             if not isinstance(thing, Revision):
                 raise TypeError('Item is not Revision: ' + repr(thing))
             return thing
-        return cls(wiki, things, check_is_rev)
+        return cls(wiki, things or [], check_is_rev)
 
     def _check_type(self, typeobj, attr=None):
         things = ''
@@ -284,7 +287,7 @@ class Queue(object):
         raise NotImplementedError("This module is not implemented due to the \
 corresponding API module's insanity, instability, and pending deprecation.")
 
-    def images(self, limit='max', images=None):
+    def images(self, limit='max', images=None, **evil):
         """Return a list of images used by Pages in this Queue.
         The Queue must contain only Pages.
         """
@@ -379,8 +382,8 @@ notificationtimestamp|subjectid|url|readable|preload|displaytitle',
             'prop': 'links',
             'plnamespace': namespace,
             'pltitles': (titles
-                         if isinstance(titles, str)
-                         else '|'.join(titles)),
+                         if isinstance(linktitles, str)
+                         else '|'.join(linktitles)),
             'pllimit': limit,
         }
         params.update(evil)
