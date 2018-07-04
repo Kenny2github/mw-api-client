@@ -97,7 +97,7 @@ from .excs import WikiError, EditConflict, catch
 from .misc import Tag, RecentChange, GenericData
 from .qyoo import Queue
 
-__version__ = '3.0.0rc4'
+__version__ = '3.0.0'
 
 __all__ = [
     'EditConflict',
