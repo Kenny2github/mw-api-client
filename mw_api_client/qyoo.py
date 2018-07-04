@@ -64,7 +64,7 @@ class Queue(object):
         return cls(wiki, things or [], check_is_rev)
 
     def _check_type(self, typeobj, attr=None):
-        things = ''
+        things = []
         for thing in self:
             if not isinstance(thing, typeobj):
                 raise TypeError('Item is not {}: {}'.format(
@@ -72,8 +72,8 @@ class Queue(object):
                     repr(thing)
                 ))
             if attr is not None:
-                things += str(getattr(thing, attr)) + '|'
-        things.strip('|')
+                things.append(str(getattr(thing, attr)))
+        things = '|'.join(things)
         return things
 
     def __iadd__(self, thing):
@@ -113,14 +113,15 @@ class Queue(object):
                 i['content'] = i['*']
                 del i['*']
             convertedi = cls1(self.wiki, **i)
-            for j in i[key]:
-                if '*' in j:
-                    j['content'] = j['*']
-                    del j['*']
-                if cls2 == Revision:
-                    tmp.append(cls2(self.wiki, convertedi, **j))
-                else:
-                    tmp.append(cls2(self.wiki, **j))
+            if key in i:
+                for j in i[key]:
+                    if '*' in j:
+                        j['content'] = j['*']
+                        del j['*']
+                    if cls2 == Revision:
+                        tmp.append(cls2(self.wiki, convertedi, **j))
+                    else:
+                        tmp.append(cls2(self.wiki, **j))
             setattr(convertedi, key, tmp)
             result.append(convertedi)
         return result
@@ -283,7 +284,9 @@ class Queue(object):
         return self._mklist(params, 'fileusage', Page, Page)
 
     def imageinfo(self, *_, **evil):
-        """Not implemented due to the API module's insanity and pending deprecation."""
+        """Not implemented due to the API module's insanity
+        and pending deprecation.
+        """
         raise NotImplementedError("This module is not implemented due to the \
 corresponding API module's insanity, instability, and pending deprecation.")
 

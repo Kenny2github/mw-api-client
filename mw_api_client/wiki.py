@@ -4,8 +4,8 @@ See the Wiki docstrings.
 from __future__ import print_function
 #pylint: disable=too-many-lines
 import time
-import requests
 from warnings import warn as _warn
+import requests
 from .page import Page, User, Revision
 from .excs import WikiError, WikiWarning
 from .misc import Tag, RecentChange, Meta, GenericData
@@ -121,6 +121,7 @@ class Wiki(object): #pylint: disable=too-many-public-methods
         Remains public since it might be used per se.
         """
         params["format"] = "json"
+        print(params)
 
         headers = {
             "User-Agent": self.user_agent,
@@ -146,7 +147,7 @@ class Wiki(object): #pylint: disable=too-many-public-methods
                                              headers=headers, files=files)
             response.raise_for_status()
 
-        #print(response.text)
+        print(response.text)
         data = response.json()
 
         if 'error' in data:

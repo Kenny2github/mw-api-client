@@ -29,7 +29,7 @@ class _CachedAttribute(object): # pylint: disable=too-few-public-methods
         self.__doc__ = method.__doc__
     def __get__(self, inst, cls):
         """Get the cached attribute."""
-        # self: <__main__.cache object at 0xb781340c>
+        # self: <__main__._CachedAttribute object at 0xb781340c>
         # inst: <__main__.Foo object at 0xb781348c>
         # cls: <class '__main__.Foo'>
         if inst is None:
