@@ -121,7 +121,7 @@ class Wiki(object): #pylint: disable=too-many-public-methods
         Remains public since it might be used per se.
         """
         params["format"] = "json"
-        print(params)
+        #print(params)
 
         headers = {
             "User-Agent": self.user_agent,
@@ -147,7 +147,7 @@ class Wiki(object): #pylint: disable=too-many-public-methods
                                              headers=headers, files=files)
             response.raise_for_status()
 
-        print(response.text)
+        #print(response.text)
         data = response.json()
 
         if 'error' in data:
