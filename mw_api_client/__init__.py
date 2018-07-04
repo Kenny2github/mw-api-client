@@ -1,4 +1,4 @@
-
+"""
 A really simple MediaWiki API client.
 
 Can use most MediaWiki API modules.
@@ -86,3 +86,29 @@ Patrol all recent changes in the Help namespace:
 Made by Kenny2github, based off of ~blob8108's Scratch Wiki API client.
 
 MIT Licensed.
+"""
+from __future__ import print_function
+
+GETINFO = False #pylint: disable=wrong-import-position
+
+from .wiki import Wiki
+from .page import Page, User, Revision
+from .excs import WikiError, EditConflict, catch
+from .misc import Tag, RecentChange, GenericData
+from .qyoo import Queue
+
+__version__ = '3.0.0'
+
+__all__ = [
+    'EditConflict',
+    'GETINFO',
+    'Page',
+    'Queue',
+    'RecentChange',
+    'Revision',
+    'Tag',
+    'User',
+    'Wiki',
+    'WikiError',
+    'catch'
+]

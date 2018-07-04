@@ -1,14 +1,18 @@
 from setuptools import setup
 from re import match, S
 
-with open('mw_api_client.py', 'r') as f:
-    longdesc = match('^"""(.*?)"""', f.read(), S).group(1)
+with open('mw_api_client\\__init__.py', 'r') as f:
+    contents = f.read()
+    longdesc = match('^"""(.*?)"""', contents, S).group(1)
+    version = match(r'[\s\S]*__version__[^\'"]+[\'"]([^\'"]+)[\'"]', contents).group(1)
+    del contents
+
 with open('README.rst', 'w') as f2:
     f2.write(longdesc)
 
 setup(
     name="mw-api-client",
-    version="2.1.0",
+    version=version,
     description="A simple MediaWiki client.",
     long_description=longdesc,
     url="https://github.com/Kenny2github/mw-api-client",
@@ -22,7 +26,9 @@ setup(
         'Programming Language :: Python :: 3.6'
     ],
     keywords='mediawiki api requests',
-    py_modules=['mw_api_client'],
+    packages=['mw_api_client'],
     install_requires='requests',
     python_requires='>=2.7',
+    test_suite='nose.collector',
+    tests_require=['nose'],
 )
