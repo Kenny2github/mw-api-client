@@ -5,8 +5,9 @@ from __future__ import print_function
 #pylint: disable=too-many-lines
 import time
 import requests
+from warnings import warn as _warn
 from .page import Page, User, Revision
-from .excs import WikiError
+from .excs import WikiError, WikiWarning
 from .misc import Tag, RecentChange, Meta, GenericData
 
 class Wiki(object): #pylint: disable=too-many-public-methods
@@ -156,7 +157,10 @@ class Wiki(object): #pylint: disable=too-many-public-methods
         if 'warnings' in data:
             warnings = data['warnings']
             for module, value in warnings.items():
-                print('warning from', module, 'module:', value['*'])
+                _warn('warning from {} module: {}'.format(
+                    module,
+                    value['*']
+                ), WikiWarning)
 
         return data
 

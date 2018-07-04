@@ -69,3 +69,7 @@ def catch(code=None, caught=None, always=None):
     finally:
         if always is not None:
             always()
+
+class WikiWarning(UserWarning):
+    """The API sent a warning in the response."""
+    pass
