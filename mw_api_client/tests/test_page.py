@@ -24,6 +24,7 @@ class TestPage(TestCase):
         sandbox = WP.page('Project:Sandbox')
         result = sandbox.edit(sandbox.read() + '\n\nTesting edit',
                               'Testing API edit')
+        # pylint: disable=unsubscriptable-object
         self.assertTrue(result['edit']['result'] == 'Success')
     def test_missing_page(self):
         """Assert that nonexistant pages have the 'missing' attribute set."""

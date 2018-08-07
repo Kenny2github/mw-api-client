@@ -179,10 +179,12 @@ the most recent revision.')
         result = {'result': None}
 
         def badtoken(exc):
+            """Catch a "badtoken" API error."""
             del self.wiki.meta.csrftoken
             token = self.wiki.meta.csrftoken
             params['token'] = token
             result['result'] = self.wiki.post_request(**params)
+            return exc
 
         with catch('badtoken', badtoken):
             result['result'] = self.wiki.post_request(**params)
