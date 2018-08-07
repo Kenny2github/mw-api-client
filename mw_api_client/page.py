@@ -5,8 +5,8 @@ from __future__ import print_function
 # pylint: disable=too-many-lines
 import re
 import time
-from .excs import WikiError, EditConflict
-from .misc import GenericData
+from .excs import WikiError, EditConflict, catch
+from .misc import GenericData, _CachedAttribute
 from . import GETINFO
 
 __all__ = [
@@ -14,33 +14,6 @@ __all__ = [
     'User',
     'Revision',
 ]
-
-class _CachedAttribute(object): # pylint: disable=too-few-public-methods
-    '''Computes attribute value and caches it in the instance.
-    From the Python Cookbook (Denis Otkidach)
-    This decorator allows you to create a property which can be computed once
-    and accessed many times. Sort of like memoization.
-    '''
-    def __init__(self, method, name=None):
-        """Initialize the cached attribute."""
-        # record the unbound-method and the name
-        self.method = method
-        self.name = name or method.__name__
-        self.__doc__ = method.__doc__
-    def __get__(self, inst, cls):
-        """Get the cached attribute."""
-        # self: <__main__._CachedAttribute object at 0xb781340c>
-        # inst: <__main__.Foo object at 0xb781348c>
-        # cls: <class '__main__.Foo'>
-        if inst is None:
-            # instance attribute accessed on class, return self
-            # You get here if you write `Foo.bar`
-            return self
-        # compute, cache and return the instance's attribute value
-        result = self.method(inst)
-        # setattr redefines the instance's attribute so this doesn't get called again
-        setattr(inst, self.name, result)
-        return result
 
 class Page(object):
     """The class for a page on a wiki.
@@ -105,7 +78,10 @@ class Page(object):
                 if part == '__page':
                     data = tuple(data.values())[0]
                 else:
-                    data = data[part]
+                    try:
+                        data = data[part]
+                    except KeyError:
+                        return #no such item, nothing to generate
             for thing in data:
                 if '*' in thing:
                     thing['content'] = thing['*']
@@ -175,18 +151,10 @@ class Page(object):
         """
         return self.read()
 
-    def edit_token(self):
-        """Retrieve an edit token for the page.
-
-        This function is deprecated in favor of
-        and is an alias for self.wiki.meta.tokens()
-        """
-        return self.wiki.meta.tokens()
-
     def edit(self, content, summary, erroronconflict=True, **evil):
         """Edit the page with the content content."""
 
-        token = self.wiki.meta.tokens()
+        token = self.wiki.meta.csrftoken
 
         try:
             rev = tuple(self.revisions(limit=1))[0]
@@ -208,7 +176,20 @@ the most recent revision.')
         }
         params.update(evil)
 
-        return self.wiki.post_request(**params)
+        result = {'result': None}
+
+        def badtoken(exc):
+            """Catch a "badtoken" API error."""
+            del self.wiki.meta.csrftoken
+            token = self.wiki.meta.csrftoken
+            params['token'] = token
+            result['result'] = self.wiki.post_request(**params)
+            return exc
+
+        with catch('badtoken', badtoken):
+            result['result'] = self.wiki.post_request(**params)
+
+        return result['result']
 
     def delete(self, reason):
         """Delete this page. Note: this is NOT the same thing
@@ -930,7 +911,6 @@ class Revision(object):
             'prop': 'revisions',
             'revids': self.revid,
             'rvprop': 'content',
-            'rvlimit': '1',
         }
         data = self.wiki.request(**params)
 

@@ -23,10 +23,11 @@ setup(
         'Intended Audience :: Developers',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content :: Wiki',
         'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.6'
     ],
     keywords='mediawiki api requests',
-    packages=['mw_api_client'],
+    packages=["mw_api_client"],
     install_requires='requests',
     python_requires='>=2.7',
     test_suite='nose.collector',
