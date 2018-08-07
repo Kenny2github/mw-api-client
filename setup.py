@@ -27,7 +27,7 @@ setup(
         'Programming Language :: Python :: 3.6'
     ],
     keywords='mediawiki api requests',
-    packages=['mw_api_client'],
+    packages=["mw_api_client"],
     install_requires='requests',
     python_requires='>=2.7',
     test_suite='nose.collector',
