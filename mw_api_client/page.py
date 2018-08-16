@@ -163,7 +163,7 @@ class Page(object):
             if newtimestamp > self._lasttimestamp and erroronconflict:
                 raise EditConflict('The last fetch was before \
 the most recent revision.')
-        except KeyError:
+        except (IndexError, KeyError):
             pass #the page doesn't exist, so we're creating it
 
         params = {
