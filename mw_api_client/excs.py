@@ -23,6 +23,7 @@ To catch an edit conflict, however, use the following:
         # is left as an exercise for the reader
 """
 from contextlib import contextmanager
+from six import with_metaclass
 
 __all__ = [
     'WikiError',
@@ -30,23 +31,38 @@ __all__ = [
     'catch'
 ]
 
-class WikiError(Exception):
-    """An arbitrary wiki error. Raised by Wiki.request."""
-    def __init__(self, code, *args):
-        Exception.__init__(self, *args)
-        self.code = code
+class _MetaWikiError(type):
+    """Metaclass to provide __getattr__ on a class."""
+    def __getattr__(cls, name):
+        setattr(cls, name, type(name, (WikiError,), {}))
+        return getattr(cls, name)
+
+#pylint: disable=too-few-public-methods
+class WikiError(with_metaclass(_MetaWikiError, Exception)):
+    """An error returned by the wiki's API. Raised by Wiki.request."""
+    @property
+    def code(self):
+        """Return the exception code. Retained for backwards compatibility."""
+        return type(self).__name__
 
 class EditConflict(Exception):
     """The last content fetch was before the most recent revision.
 
-    Note: do NOT use ``excs.catch`` with this error! It does not inherit
-    from WikiError. Use a normal try/except statement instead.
+    Note: this exception does NOT inherit from WikiError! You must
+    use it explicitly:
+        try:
+            page.edit(contents, summary)
+        except (WikiError, EditConflict):
+            print('API error or edit conflict')
     """
     pass
 
 @contextmanager
 def catch(code=None, caught=None, always=None):
     """Catch a certain error code.
+    Note: This function is deprecated and remains only
+    for backwards compatibility.
+
     ``code`` (either a string or an object with a __contains__ method)
     is the error code(s) to catch. If it is a string, it is directly compared.
     Otherwise, it is checked for membership. If it is None, all exceptions
@@ -60,10 +76,12 @@ def catch(code=None, caught=None, always=None):
     try:
         yield
     except WikiError as exc:
-        if (code is not None) and (exc.code != code
-                                   if isinstance(code, str)
-                                   else exc.code not in code):
-            raise
+        if (code is not None) and isinstance(code, str):
+            if type(exc).__name__ != code:
+                raise
+        elif code is not None:
+            if type(exc).__name__ not in code:
+                raise
         if caught is not None:
             caught(exc)
     finally:

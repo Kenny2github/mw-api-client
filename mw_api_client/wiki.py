@@ -150,8 +150,7 @@ class Wiki(object): #pylint: disable=too-many-public-methods
 
         if 'error' in data:
             error = data['error']
-            raise WikiError(error['code'],
-                            error['code'] + ': ' + error['info'])
+            raise getattr(WikiError, error['code'], WikiError)(error['info'])
 
         if 'warnings' in data:
             warnings = data['warnings']

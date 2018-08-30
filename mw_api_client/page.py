@@ -5,7 +5,7 @@ from __future__ import print_function
 # pylint: disable=too-many-lines
 import re
 import time
-from .excs import WikiError, EditConflict, catch
+from .excs import WikiError, EditConflict
 from .misc import GenericData, _CachedAttribute
 from . import GETINFO
 
@@ -178,15 +178,12 @@ the most recent revision.')
 
         result = {'result': None}
 
-        def badtoken(exc):
-            """Catch a "badtoken" API error."""
+        try:
+            result['result'] = self.wiki.post_request(**params)
+        except WikiError.badtoken:
             del self.wiki.meta.csrftoken
             token = self.wiki.meta.csrftoken
             params['token'] = token
-            result['result'] = self.wiki.post_request(**params)
-            return exc
-
-        with catch('badtoken', badtoken):
             result['result'] = self.wiki.post_request(**params)
 
         return result['result']
