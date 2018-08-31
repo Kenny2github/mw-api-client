@@ -30,11 +30,9 @@ class TestExcs(TestCase):
     def test_catch(self):
         """Test using mw.catch to catch specific errors."""
         mainpage = WP.page('Main Page')
-        globs = {'errored': False}
-        def handler(err):
-            """Dummy handler"""
-            globs['errored'] = True
-            del err
-        with mw.catch('protectedpage', handler):
+        errored = False
+        try:
             mainpage.edit('test illegal edit', 'test illegal edit')
-        self.assertTrue(globs['errored'])
+        except mw.excs.WikiError.protectedpage:
+            errored = True
+        self.assertTrue(errored)

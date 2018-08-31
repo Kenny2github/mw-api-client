@@ -101,19 +101,17 @@ class Wiki(object): #pylint: disable=too-many-public-methods
         if isinstance(limit, str):
             if limit == 'max':
                 return limit
-            else:
-                limit = int(limit) - wrap
-                if limit < 1:
-                    limit = 1
-                return limit
-        elif isinstance(limit, int):
+            limit = int(limit) - wrap
+            if limit < 1:
+                limit = 1
+            return limit
+        if isinstance(limit, int):
             limit -= wrap
             if limit < 1:
                 limit = 1
             return limit
-        else:
-            raise TypeError('"limit" must be str or int, not '
-                            + type(limit).__name__)
+        raise TypeError('"limit" must be str or int, not '
+                        + type(limit).__name__)
 
     def request(self, _headers=None, _post=False, files=None, **params):
         """Inner request method.
@@ -152,16 +150,12 @@ class Wiki(object): #pylint: disable=too-many-public-methods
 
         if 'error' in data:
             error = data['error']
-            raise WikiError(error['code'],
-                            error['code'] + ': ' + error['info'])
+            raise getattr(WikiError, error['code'], WikiError)(error['info'])
 
         if 'warnings' in data:
             warnings = data['warnings']
             for module, value in warnings.items():
-                _warn('warning from {} module: {}'.format(
-                    module,
-                    value['*']
-                ), WikiWarning)
+                _warn(getattr(WikiWarning, module)(value['*']))
 
         return data
 

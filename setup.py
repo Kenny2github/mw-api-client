@@ -28,7 +28,7 @@ setup(
     ],
     keywords='mediawiki api requests',
     packages=["mw_api_client"],
-    install_requires='requests',
+    install_requires=['requests', 'six'],
     python_requires='>=2.7',
     test_suite='nose.collector',
     tests_require=['nose'],
