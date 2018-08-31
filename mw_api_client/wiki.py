@@ -155,10 +155,7 @@ class Wiki(object): #pylint: disable=too-many-public-methods
         if 'warnings' in data:
             warnings = data['warnings']
             for module, value in warnings.items():
-                _warn('warning from {} module: {}'.format(
-                    module,
-                    value['*']
-                ), WikiWarning)
+                _warn(getattr(WikiWarning, module)(value['*']))
 
         return data
 

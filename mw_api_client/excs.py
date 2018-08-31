@@ -23,11 +23,13 @@ To catch an edit conflict, however, use the following:
         # is left as an exercise for the reader
 """
 from contextlib import contextmanager
+from warnings import warn as _warn
 from six import with_metaclass
 
 __all__ = [
     'WikiError',
     'EditConflict',
+    'WikiWarning',
     'catch'
 ]
 
@@ -73,6 +75,9 @@ def catch(code=None, caught=None, always=None):
     Use functools.partial for arguments.
     If ``caught`` or ``always`` are None, behavior is to pass.
     """
+    _warn('``catch`` is deprecated in favor of normal try...except blocks with'
+          ' arbitrary attributes of WikiError. It may be removed in future'
+          ' releases.', DeprecationWarning)
     try:
         yield
     except WikiError as exc:
@@ -88,6 +93,12 @@ def catch(code=None, caught=None, always=None):
         if always is not None:
             always()
 
-class WikiWarning(UserWarning):
+class _MetaWikiWarning(type):
+    """Metaclass to provide __getattr__ on a class."""
+    def __getattr__(cls, name):
+        setattr(cls, name, type(name, (WikiWarning,), {}))
+        return getattr(cls, name)
+
+class WikiWarning(with_metaclass(_MetaWikiWarning, UserWarning)):
     """The API sent a warning in the response."""
     pass
