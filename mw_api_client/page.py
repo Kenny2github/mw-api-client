@@ -132,16 +132,21 @@ class Page(object):
             'rvprop': "content|timestamp",
             'rvlimit': "1",
         })
+        missingq = False
         try:
             data = tuple(data['query']['pages'].values())[0]['revisions'][0]
         except KeyError:
             self.info()
             if hasattr(self, 'missing'):
-                raise WikiError('notfound', 'The page does not exist.')
-            raise
+                missingq = True
+            else:
+                raise
+        if missingq:
+            raise WikiError.notfound('The page does not exist.')
         self._lasttimestamp = time.mktime(time.strptime(data['timestamp'],
                                                         '%Y-%m-%dT%H:%M:%SZ'))
-        return data['*']
+        self.content = data['*']
+        return self.content
 
     @_CachedAttribute
     def content(self):
