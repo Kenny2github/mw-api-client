@@ -1,7 +1,7 @@
 from setuptools import setup
 from re import match, S
 
-with open('mw_api_client\\__init__.py', 'r') as f:
+with open('mw_api_client/__init__.py', 'r') as f:
     contents = f.read()
     longdesc = match('^"""(.*?)"""', contents, S).group(1)
     version = match(r'[\s\S]*__version__[^\'"]+[\'"]([^\'"]+)[\'"]', contents).group(1)
