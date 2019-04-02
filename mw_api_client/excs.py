@@ -6,12 +6,12 @@ To catch a permission error:
 
 ..code-block:: python
 
-    def denied(exc):
+    try:
+        page.edit(contents, 'summary')
+    except mw.WikiError.protectedpage as exc:
         print('Page is protected:', exc)
-    with mw.catch('protectedpage', denied):
-        page.edit(contents, summary)
 
-To catch an edit conflict, however, use the following:
+To catch an edit conflict, use the following:
 
 ..code-block:: python
 
@@ -21,6 +21,8 @@ To catch an edit conflict, however, use the following:
     except mw.EditConflict:
         # handling the edit conflict
         # is left as an exercise for the reader
+
+Note that ``EditConflict`` does NOT inherit from WikiError.
 """
 from contextlib import contextmanager
 from warnings import warn as _warn
@@ -33,14 +35,14 @@ __all__ = [
     'catch'
 ]
 
-class _MetaWikiError(type):
+class _MetaGetattr(type):
     """Metaclass to provide __getattr__ on a class."""
     def __getattr__(cls, name):
-        setattr(cls, name, type(name, (WikiError,), {}))
+        setattr(cls, name, type(name, (cls,), {}))
         return getattr(cls, name)
 
 #pylint: disable=too-few-public-methods
-class WikiError(with_metaclass(_MetaWikiError, Exception)):
+class WikiError(with_metaclass(_MetaGetattr, Exception)):
     """An error returned by the wiki's API. Raised by Wiki.request."""
     @property
     def code(self):
@@ -93,12 +95,6 @@ def catch(code=None, caught=None, always=None):
         if always is not None:
             always()
 
-class _MetaWikiWarning(type):
-    """Metaclass to provide __getattr__ on a class."""
-    def __getattr__(cls, name):
-        setattr(cls, name, type(name, (WikiWarning,), {}))
-        return getattr(cls, name)
-
-class WikiWarning(with_metaclass(_MetaWikiWarning, UserWarning)):
+class WikiWarning(with_metaclass(_MetaGetattr, UserWarning)):
     """The API sent a warning in the response."""
     pass
