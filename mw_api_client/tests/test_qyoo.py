@@ -28,27 +28,28 @@ class TestQyoo(TestCase):
         try:
             mw.Queue.frompages(WP, (WP.page('Project:Sandbox'),
                                     'not a Page'))
-            self.assertTrue(1 != 1)
+            errored = False
         except TypeError:
-            self.assertTrue(1 == 1)
+            errored = True
+        self.assertTrue(errored)
     def test_categories(self):
         """Assert Queue.categories returns Pages with Pages."""
         queue = mw.Queue.fromtitles(WP, ('Project:Sandbox', 'Draft:Sandbox'))
         for page in queue.categories(2):
-            self.assertTrue(isinstance(page, mw.Page))
+            self.assertIsInstance(page, mw.Page)
             for cat in page.categories:
-                self.assertTrue(isinstance(cat, mw.Page))
+                self.assertIsInstance(cat, mw.Page)
     def test_contributors(self):
         """Assert Queue.contributors returns Pages with Users."""
         queue = mw.Queue.fromtitles(WP, ('Project:Sandbox', 'Draft:Sandbox'))
         for page in queue.contributors(2):
-            self.assertTrue(isinstance(page, mw.Page))
+            self.assertIsInstance(page, mw.Page)
             for user in page.contributors:
-                self.assertTrue(isinstance(user, mw.User))
+                self.assertIsInstance(user, mw.User)
     def test_revisions(self):
         """Assert Queue.revisions returns Pages with Revisions."""
         queue = mw.Queue.fromtitles(WP, ('Project:Sandbox', 'Draft:Sandbox'))
         for page in queue.revisions():
-            self.assertTrue(isinstance(page, mw.Page))
+            self.assertIsInstance(page, mw.Page)
             for rev in page.revisions:
-                self.assertTrue(isinstance(rev, mw.Revision))
+                self.assertIsInstance(rev, mw.Revision)

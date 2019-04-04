@@ -2,7 +2,7 @@
 This submodule contains the Page and User objects.
 """
 from __future__ import print_function
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines,method-hidden
 import re
 import time
 from .excs import WikiError, EditConflict
