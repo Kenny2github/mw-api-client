@@ -157,7 +157,11 @@ class Meta(object):
         params = {
             'action': 'query',
             'meta': 'userinfo',
-            'type': kind,
+            'uiprop': kind or (
+                'blockinfo|groups|implicitgroups|rights|changeablegroups'
+                '|options|ratelimits|realname|email'
+                '|registrationdate'
+            ),
         }
         data = self.wiki.request(**params)
         return data['query']['userinfo']
