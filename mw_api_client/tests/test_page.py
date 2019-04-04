@@ -13,26 +13,29 @@ class TestPage(TestCase):
         """Test getting Revisions of a Page."""
         sandbox = WP.page('Project:Sandbox')
         for rev in sandbox.revisions(limit=10, rvprop='content'):
-            self.assertTrue(isinstance(rev.content, basestring))
+            self.assertIsInstance(rev.content, basestring)
     def test_read_is_string(self):
         """Assert that reading content returns a string (or basestring)."""
         sandbox = WP.page('Project:Sandbox')
         content = sandbox.read()
-        self.assertTrue(isinstance(content, basestring))
+        self.assertIsInstance(content, basestring)
     def test_edit_success(self):
         """Assert successful edits return result 'Success'."""
         sandbox = WP.page('Project:Sandbox')
-        result = sandbox.edit(sandbox.read() + '\n\nTesting edit',
-                              'Testing API edit')
+        try:
+            result = sandbox.edit(sandbox.read() + '\n\nTesting edit',
+                                  'Testing API edit')
+        except mw.WikiError.blocked:
+            self.skipTest('This IP is blocked from editing')
+            return
         # pylint: disable=unsubscriptable-object
-        self.assertTrue(result['edit']['result'] == 'Success')
+        self.assertEqual(result['edit']['result'], 'Success')
     def test_missing_page(self):
         """Assert that nonexistant pages have the 'missing' attribute set."""
-        nonexistant = WP.page('asdfasdfasdfasdfasdfasdfsadfhjklhjklhkjhjkhjkh')
-        nonexistant.info()
+        nonexistant = WP.page('asdfasdfasdfasdfasdfasdfsadfhjklhjklhkjhjkhjkh', getinfo=True)
         self.assertTrue(hasattr(nonexistant, 'missing'))
     def test_user_contribs(self):
         """Assert that User.contribs generates Revisions."""
         jimbo = WP.user('Jimbo Wales')
         for rev in jimbo.contribs(limit=10):
-            self.assertTrue(isinstance(rev, mw.Revision))
+            self.assertIsInstance(rev, mw.Revision)

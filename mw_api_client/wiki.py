@@ -6,7 +6,7 @@ from __future__ import print_function
 import time
 from warnings import warn as _warn
 import requests
-from .page import Page, User, Revision
+from .page import Page, User, CurrentUser, Revision
 from .excs import WikiError, WikiWarning
 from .misc import Tag, RecentChange, Meta, GenericData
 
@@ -234,8 +234,7 @@ class Wiki(object): #pylint: disable=too-many-public-methods
             'lgtoken': lgtoken
         }
         data = self.post_request(**params)['login']
-        self.currentuser = User(self, name=username,
-                                currentuser=True, getinfo=True)
+        self.currentuser = CurrentUser(self)
         return data
 
     def clientlogin(self, username, password):
@@ -253,8 +252,7 @@ class Wiki(object): #pylint: disable=too-many-public-methods
             'loginreturnurl': self.api_url
         }
         data = self.post_request(**params)['clientlogin']
-        self.currentuser = User(self, name=username,
-                                currentuser=True, getinfo=True)
+        self.currentuser = CurrentUser(self)
         return data
 
     def logout(self): #simple enough lol

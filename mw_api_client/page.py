@@ -2,7 +2,7 @@
 This submodule contains the Page and User objects.
 """
 from __future__ import print_function
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines,method-hidden
 import re
 import time
 from .excs import WikiError, EditConflict
@@ -718,27 +718,53 @@ the most recent revision.')
             getinfo
         )
 
+class CurrentUser(object):
+    """The currently logged in user on a wiki."""
+    def __init__(self, wiki):
+        """Initialize the instance with its wiki."""
+        self.wiki = wiki
+        self.__dict__.update(self.wiki.meta.userinfo())
+        self.user = User(self.wiki, name=self.name, getinfo=True)
+
+    def __repr__(self):
+        """Represent the current user."""
+        return '<CurrentUser {un}>'.format(un=self.name)
+
+    __str__ = __repr__
+
+    def clearhasmsg(self):
+        """Clear the "new message" notification."""
+        self.wiki.request(_format='none',
+                          **{'action': 'clearhasmsg'})
+
+    def emailuser(self, target, body, subject=None, ccme=None):
+        """Email another user."""
+        token = self.wiki.meta.tokens()
+        return self.wiki.post_request(**{
+            'action': 'emailuser',
+            'target': target.name if isinstance(target, User) else target,
+            'subject': subject,
+            'text': body,
+            'ccme': ccme,
+            'token': token
+        })['emailuser']['result']
+
 class User(object):
     """A user on a wiki."""
-    def __init__(self, wiki, name=None, currentuser=False,
+    def __init__(self, wiki, name=None,
                  getinfo=None, **userinfo):
         """Initialize the instance with its wiki and update its info."""
         self.wiki = wiki
         self.name = name
-        self.currentuser = currentuser
         self.__dict__.update(userinfo)
         if getinfo is None:
             getinfo = GETINFO
         if getinfo:
             data = next(self.wiki.users(self.name, justdata=True))
             self.__dict__.update(data)
-            if currentuser:
-                self.__dict__.update(self.wiki.meta.userinfo())
 
     def __repr__(self):
         """Represent a User."""
-        if self.currentuser:
-            return '<Current User {un}>'.format(un=self.name)
         return '<User {un}>'.format(un=self.name)
 
     __str__ = __repr__
@@ -750,10 +776,6 @@ class User(object):
     def __hash__(self):
         """User.__hash__() <==> hash(User)"""
         return hash(self.name)
-
-    def __bool__(self):
-        """Returns the value of self.currentuser."""
-        return bool(self.currentuser)
 
     def block(self, reason, expiry=None, **evil):
         """Block this user.
@@ -838,25 +860,6 @@ flags|tags',
                     break
             else:
                 break
-
-    def clearhasmsg(self):
-        """Clear the "new message" notification. Must be current user."""
-        assert self.currentuser
-        self.wiki.request(_format='none',
-                          **{'action': 'clearhasmsg'})
-
-    def emailuser(self, target, body, subject=None, ccme=None):
-        """Email another user. Must be current user."""
-        assert self.currentuser
-        token = self.wiki.meta.tokens()
-        return self.wiki.post_request(**{
-            'action': 'emailuser',
-            'target': target.name if isinstance(target, User) else target,
-            'subject': subject,
-            'text': body,
-            'ccme': ccme,
-            'token': token
-        })['emailuser']['result']
 
     def resetpassword(self, capture=False):
         """Reset this User's password. If `capture` is truthy, return the

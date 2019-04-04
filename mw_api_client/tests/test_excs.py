@@ -18,8 +18,12 @@ class TestExcs(TestCase):
         sandbox1 = WP.page('Project:Sandbox')
         sandbox2 = WP.page('Project:Sandbox')
         content1 = sandbox1.read()
-        sandbox2.edit(sandbox2.read() + 'testing conflict',
-                      'testing edit conflict')
+        try:
+            sandbox2.edit(sandbox2.read() + 'testing conflict',
+                          'testing edit conflict')
+        except mw.WikiError.blocked:
+            self.skipTest('This IP is blocked from editing')
+            return
         errored = False
         try:
             sandbox1.edit(content1 + 'testing conflicted edit',
@@ -28,11 +32,14 @@ class TestExcs(TestCase):
             errored = True
         self.assertTrue(errored)
     def test_catch(self):
-        """Test using mw.catch to catch specific errors."""
+        """Test try/except to catch specific errors."""
         mainpage = WP.page('Main Page')
         errored = False
         try:
             mainpage.edit('test illegal edit', 'test illegal edit')
-        except mw.excs.WikiError.protectedpage:
+        except mw.WikiError.protectedpage:
             errored = True
+        except mw.WikiError.blocked:
+            self.skipTest('This IP is blocked from editing')
+            return
         self.assertTrue(errored)
