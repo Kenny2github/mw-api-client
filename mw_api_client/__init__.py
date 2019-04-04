@@ -92,12 +92,12 @@ from __future__ import print_function
 GETINFO = False #pylint: disable=wrong-import-position
 
 from .wiki import Wiki
-from .page import Page, User, Revision
-from .excs import WikiError, EditConflict, catch
+from .page import Page, User, Revision, CurrentUser
+from .excs import WikiError, WikiWarning, EditConflict, catch
 from .misc import Tag, RecentChange, GenericData
 from .qyoo import Queue
 
-__version__ = '3.2.0a2'
+__version__ = '3.2.0a3'
 
 __all__ = [
     'EditConflict',
@@ -108,7 +108,9 @@ __all__ = [
     'Revision',
     'Tag',
     'User',
+    'CurrentUser',
     'Wiki',
     'WikiError',
+    'WikiWarning',
     'catch'
 ]
