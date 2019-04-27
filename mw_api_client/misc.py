@@ -198,7 +198,7 @@ class Meta(object):
         }
         params.update(evil)
         data = self.wiki.request(**params)
-        return tuple(data['query'].values())[0]
+        return data if prop else tuple(data['query'].values())[0]
 
     def allmessages(self, *args, **kwargs):
         """Though the API module is in meta, this is implemented in Wiki

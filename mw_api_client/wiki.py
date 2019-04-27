@@ -258,7 +258,8 @@ class Wiki(object): #pylint: disable=too-many-public-methods
     def logout(self): #simple enough lol
         """Log out the current user."""
         self.currentuser = None
-        return self.post_request(action='logout')
+        lgtoken = self.meta.tokens('csrf')
+        return self.post_request(action='logout', token=lgtoken)
 
     def page(self, title, **evil):
         """Return a Page instance based off of the title of the page."""
