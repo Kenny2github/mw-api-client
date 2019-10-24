@@ -252,7 +252,7 @@ the most recent revision.')
         to autoconfirmed users and restrict moving to admins, use:
         {
             'edit': 'autoconfirmed',
-            'move': 'systop'
+            'move': 'sysop'
         }
 
         Format for `expiry`:
