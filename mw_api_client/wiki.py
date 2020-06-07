@@ -141,7 +141,7 @@ class Wiki(object): #pylint: disable=too-many-public-methods
                 response = self._session.post(self.api_url, data=params,
                                               headers=headers, files=files)
             else:
-                response = self._session.get(self.api_url, data=params,
+                response = self._session.get(self.api_url, params=params,
                                              headers=headers, files=files)
             response.raise_for_status()
 
