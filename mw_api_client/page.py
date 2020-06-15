@@ -131,6 +131,7 @@ class Page(object):
             'prop': "revisions",
             'rvprop': "content|timestamp",
             'rvlimit': "1",
+            'rvslots': 'main'
         })
         missingq = False
         try:
@@ -145,7 +146,7 @@ class Page(object):
             raise WikiError.notfound('The page does not exist.')
         self._lasttimestamp = time.mktime(time.strptime(data['timestamp'],
                                                         '%Y-%m-%dT%H:%M:%SZ'))
-        self.content = data['*']
+        self.content = data['slots']['main']['*']
         return self.content
 
     @_CachedAttribute
