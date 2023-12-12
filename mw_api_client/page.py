@@ -387,6 +387,7 @@ the most recent revision.')
             'prop': 'revisions',
             'rvprop': 'ids|flags|timestamp|user|userid|size|sha1|contentmodel|'
                       + 'comment|parsedcomment|tags',
+            'rvslots': 'main',
             'titles': self.title,
             'rvlimit': limit
         }
@@ -917,10 +918,11 @@ class Revision(object):
             'prop': 'revisions',
             'revids': self.revid,
             'rvprop': 'content',
+            'rvslots': 'main',
         }
         data = self.wiki.request(**params)
 
-        return tuple(data['query']['pages'].values())[0]['revisions'][0]['*']
+        return tuple(data['query']['pages'].values())[0]['revisions'][0]['slots']['main']['*']
 
     @_CachedAttribute
     def content(self):
@@ -928,6 +930,8 @@ class Revision(object):
         This should normally be set when a request instantiating a Revision
         includes the content.
         """
+        if hasattr(self, 'slots'):
+            return self.slots['main']['*']
         return self.read()
 
     @staticmethod
