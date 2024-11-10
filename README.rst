@@ -27,61 +27,32 @@ Example Usage
 
     import mw_api_client as mw
 
-Get a page:
+Edit page:
 
 .. code-block:: python
 
     wp = mw.Wiki("https://en.wikipedia.org/w/api.php", "MyCoolBot/0.0.0")
 
-    wp.login("kenny2wiki", password)
+    await wp.login("AbyxDev", password)
 
-    sandbox = wp.page("User:Kenny2wiki/sandbox")
-
-Edit page:
-
-.. code-block:: python
+    sandbox = wp.page("User:AbyxDev/sandbox")
 
     # Get the page
     contents = sandbox.read()
 
     # Change
-    contents += "\n This is a test!"
+    contents += "\nThis is a test!"
     summary = "Made a test edit"
 
     # Submit
-    sandbox.edit(contents, summary)
+    await sandbox.edit(contents, summary)
 
-List pages in category:
+For a more featureful example, see `demo_bot.py`_.
 
-.. code-block:: python
+.. _demo_bot.py: docs/_static/demo_bot.py
 
-    for page in wp.category("Redirects").categorymembers():
-        print(page.title)
-
-Remove all uses of a template:
-
-.. code-block:: python
-
-    stub = wp.template("Stub")
-
-    # Pages that transclude stub, main namespace only
-    target_pages = list(stub.transclusions(namespace=0))
-
-    # Sort by title because it's prettier that way
-    target_pages.sort(key=lambda p: p.title)
-
-    for page in target_pages:
-        page.replace("{{stub}}", "")
-
-Patrol all recent changes in the Help namespace:
-
-.. code-block:: python
-
-    rcs = wp.recentchanges(rcnamespace=12)
-
-    for rc in rcs:
-        rc.patrol()
-
+Credits
+=======
 
 Made by Kenny2github, based off of ~blob8108's Scratch Wiki API client.
 
