@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mw-api-client"
+version = "4.0.0"
+description = "A simple MediaWiki client."
+readme = "README.rst"
+requires-python = ">=3.9"
+keywords = ["mediawiki", "api", "aiohttp"]
+license = {file = "LICENSE.txt"}
+authors = [{name = "Ken Hilton"}]
+classifiers = [
+	"Development Status :: 4 - Beta",
+	"Intended Audience :: Developers",
+	"Topic :: Internet :: WWW/HTTP :: Dynamic Content :: Wiki",
+	"License :: OSI Approved :: MIT License",
+	"Programming Language :: Python :: 3 :: Only",
+	"Programming Language :: Python :: 3.9",
+	"Typing :: Typed",
+]
+dependencies = [
+	"aiohttp",
+]
+
+[project.optional-dependencies]
+test = [
+	"pytest",
+	"pytest-asyncio",
+]
+docs = [
+	"sphinx",
+	"furo",
+]
+
+[project.urls]
+Source = "https://github.com/Kenny2github/mw-api-client"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["mw_api_client*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

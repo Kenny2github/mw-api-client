@@ -6,3 +6,5 @@ build/
 __pycache__/
 .vs*
 *_old
+.venv/
+docs/_build
