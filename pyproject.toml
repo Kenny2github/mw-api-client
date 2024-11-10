@@ -7,7 +7,7 @@ name = "mw-api-client"
 version = "4.0.0"
 description = "A simple MediaWiki client."
 readme = "README.rst"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 keywords = ["mediawiki", "api", "aiohttp"]
 license = {file = "LICENSE.txt"}
 authors = [{name = "Ken Hilton"}]
@@ -17,7 +17,7 @@ classifiers = [
 	"Topic :: Internet :: WWW/HTTP :: Dynamic Content :: Wiki",
 	"License :: OSI Approved :: MIT License",
 	"Programming Language :: Python :: 3 :: Only",
-	"Programming Language :: Python :: 3.9",
+	"Programming Language :: Python :: 3.10",
 	"Typing :: Typed",
 ]
 dependencies = [
