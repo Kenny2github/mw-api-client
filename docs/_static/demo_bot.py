@@ -99,7 +99,7 @@ async def generators_demo(wiki: mw.Wiki) -> None:
     # because there is no good way to structure that kind of iteration in a way
     # that doesn't involve prefetching all the data anyway.
     generator = (page1 | page2).links_here(limit=5)
-    results = await (generator.contributors() + generator.templates()).fetchall()
+    results = await (generator.contributors() | generator.templates()).fetchall()
     for linking_page, result in results.items():
         for user in result['contributors']:
             print(page1, 'or', page2, 'links to', linking_page, 'which has contributor', user)
