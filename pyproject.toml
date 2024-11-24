@@ -33,6 +33,9 @@ docs = [
 	"sphinx",
 	"furo",
 ]
+examples = [
+	"mwparserfromhell",
+]
 
 [project.urls]
 Source = "https://github.com/Kenny2github/mw-api-client"
