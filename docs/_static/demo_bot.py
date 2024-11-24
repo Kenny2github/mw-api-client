@@ -20,7 +20,6 @@ async def login_wiki() -> mw.Wiki:
 
     # Login with a bot password. For this to work, you need to have
     # generated a password on Special:BotPasswords.
-    # To use a regular user account without bot passwords, use Wiki.clientlogin().
     await wiki.login(input('Enter username: '), getpass('Enter password: '))
 
     return wiki
