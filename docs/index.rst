@@ -9,10 +9,11 @@ Welcome to mw-api-client's documentation!
 Go ahead and begin with the Quickstart. It contains a barebones example to get you started. For a more comprehensive demo of various features, take a look at `demo_bot.py`_.
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 3
    :caption: Contents:
 
    philosophy
+   reference
 
 Indices and tables
 ==================

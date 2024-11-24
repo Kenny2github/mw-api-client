@@ -1,3 +1,4 @@
+from __future__ import annotations
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
@@ -22,7 +23,9 @@ extensions = [
     'sphinx.ext.napoleon',
 ]
 
+python_use_unqualified_type_names = True
 autodoc_member_order = 'bysource'
+autoclass_content = 'both'
 autodoc_default_options = {
     'members': True,
     'show-inheritance': True,
@@ -43,3 +46,37 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 html_theme = 'furo'
 html_static_path = ['_static']
+
+# -- Hooks -------------------------------------------------------------------
+from typing import TYPE_CHECKING, get_overloads
+import inspect
+
+if TYPE_CHECKING:
+    # import sphinx
+    import sphinx.application
+    from typing import Any, Literal
+
+## Update return annotations based on overloads
+def overloaded_retann(
+    app: sphinx.application.Sphinx,
+    objtype: Literal['module', 'class', 'exception', 'function', 'method', 'attribute'],
+    fullname: str,
+    obj: Any,
+    options: dict[str, bool],
+    args: str | None,
+    retann: str | None
+) -> (tuple[str | None, str | None] | None):
+    if objtype != 'method':
+        return None
+    for overload in get_overloads(obj):
+        anns = inspect.get_annotations(overload, eval_str=False)
+        cls = fullname.split('.')[-2]
+        if anns.get('limit', '').strip().casefold() == 'literal[1]':
+            continue # ignore the One[]Generator overloads
+        if anns.get('self', '').split('[')[0].endswith(cls):
+            retann = anns['return']
+            break
+    return args, retann
+
+def setup(app: sphinx.application.Sphinx) -> None:
+    app.connect('autodoc-process-signature', overloaded_retann)
