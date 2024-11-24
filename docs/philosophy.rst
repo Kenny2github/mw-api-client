@@ -20,11 +20,6 @@ Combine requests where possible
 
 To further the goal of fewest requests, **requests should be combined** into single large requests where possible - either by design, or at least in a way easily leveragable by the user - such as by using `generators`_.
 
-"Might as well" principle
--------------------------
-
-With all of the above said, if a request must be made, it **"might as well" fetch as much metadata as it can**. This does not mean fetching more entries of a list than requested (there are rate limit and performance implications), but rather all data available for each entry (e.g. all ``rvprops``).
-
 Cache results where sensible
 ----------------------------
 
@@ -32,6 +27,15 @@ To further the goal of fewest requests, **requested data should be cached in mem
 
 * There are usually more requests for that data than there are modifications (such as page content); *and*
 * The use case doesn't need to ensure the data is current by nature (e.g. recent changes).
+
+"Might as well" principle
+-------------------------
+
+With all of the above said, if a request must be made, we **"might as well" fetch as much metadata as we can**.
+
+This does not mean fetching more entries of a stream than requested (there are rate limit and performance implications), but rather all data available for each entry (e.g. all ``rvprops``).
+
+This *does* mean that more than one request may be made when only one might be strictly necessary. Combining this principle with the previous three means that any ``async`` method is an entry into an unlimited number of API requests, but those requests will be combined where possible, and caches used where sensible or else populated where available.
 
 Ease of use over completeness
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
