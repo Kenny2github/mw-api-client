@@ -38,9 +38,9 @@ async def sandbox_play(wiki: mw.Wiki) -> mw.Page:
         # is forbidden, pass None explicitly. Note that in that case, MediaWiki
         # may automatically generate an edit summary for you.
         summary='Initializing the sandbox',
-        # By default, edits can't create new pages (nocreate=True)
-        # and can't create pages deleted since the last read() (recreate=False)
-        nocreate=False, recreate=True,
+        # By default, edits can't create new pages (create=False);
+        # create=None makes it agnostic; create=True allows only creation.
+        create=None,
     )
 
     # Ensure our changes were made, minus the extra trailing newline.
