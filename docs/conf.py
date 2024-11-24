@@ -9,7 +9,9 @@
 project = 'mw-api-client'
 copyright = '2024, AbyxDev'
 author = 'AbyxDev'
-release = '4.0.0'
+from importlib.metadata import version as get_version
+
+release = get_version('mw-api-client')
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
