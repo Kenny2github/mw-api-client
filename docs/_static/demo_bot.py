@@ -27,6 +27,7 @@ async def login_wiki() -> mw.Wiki:
 
 async def sandbox_play(wiki: mw.Wiki) -> mw.Page:
     """Play around with the logged-in user's sandbox."""
+    assert wiki.me is not None
     # Get a handle on a wiki page
     sandbox = wiki.page(f'User:{wiki.me.name}/sandbox')
 
@@ -46,7 +47,7 @@ async def sandbox_play(wiki: mw.Wiki) -> mw.Page:
     # Ensure our changes were made, minus the extra trailing newline.
     # This also internally marks the respective revision as the the "base"
     # revision used for edit conflict detection.
-    assert content == (content := sandbox.read()).rstrip()
+    assert content == (content := await sandbox.read()).rstrip()
 
     # Modify the content
     content += '\nNew test'
@@ -111,7 +112,7 @@ async def remove_category(cat: mw.Category) -> None:
     # We use Earwig's mwparserfromhell to make the changes.
     async for page in cat.pages():
         # Get and parse the page content
-        content = mwp.parse(page.read())
+        content = mwp.parse(await page.read())
         # Loop through all links and remove links to the category
         for link in content.filter_wikilinks():
             if link.title == cat.title:
