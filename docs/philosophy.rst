@@ -54,6 +54,13 @@ No deprecated features
 
 Features of the API **deprecated by MediaWiki shall not be supported**, unless no method exists to perform the same action.
 
+No experimental or incomplete features
+--------------------------------------
+
+Features of the API which are **experimental or incomplete shall not be supported** until they are stable and complete.
+
+Notably, as of MediaWiki 1.44.0, revision slots can only be *read*, but not *edited*, through the API. As such, revision slots are an *incomplete* feature and this project will not support accessing slots other than the ``main`` slot.
+
 Resemble human user
 -------------------
 
