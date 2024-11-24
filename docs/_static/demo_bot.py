@@ -131,7 +131,7 @@ async def patrol_all_help(wiki: mw.Wiki) -> None:
     # Only fetch unpatrolled changes in the Help namespace
     async for change in wiki.recentchanges(
         limit=None, namespace=mw.Namespace.HELP,
-        show=mw.EditFlag.UNPATROLLED
+        show=['unpatrolled']
     ):
         # Patrol the change
         print('Patrolling change to', change.title)
