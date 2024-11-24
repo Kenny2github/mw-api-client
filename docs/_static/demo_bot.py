@@ -1,7 +1,7 @@
 from getpass import getpass
 from importlib.metadata import version as get_version
 import asyncio
-import mw_api_client as mw
+import mw_api as mw
 import mwparserfromhell as mwp
 
 async def login_wiki() -> mw.Wiki:

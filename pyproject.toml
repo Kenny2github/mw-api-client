@@ -39,7 +39,7 @@ Source = "https://github.com/Kenny2github/mw-api-client"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["mw_api_client*"]
+include = ["mw_api*"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
