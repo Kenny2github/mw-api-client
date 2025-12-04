@@ -16,11 +16,13 @@ Wiki class
 
 .. autoclass:: Wiki
 	:class-doc-from: class
+	:no-show-inheritance:
 
 Exceptions
 ~~~~~~~~~~
 
 .. autoexception:: APIError
+	:no-show-inheritance:
 
 .. autoexception:: APIWarning
 	:inherited-members: Exception
@@ -30,6 +32,7 @@ Page classes
 
 .. autoclass:: Page
 	:inherited-members:
+	:no-show-inheritance:
 
 .. autoclass:: TalkPage
 	:inherited-members: Page
@@ -47,6 +50,7 @@ User classes
 ~~~~~~~~~~~~
 
 .. autoclass:: User
+	:no-show-inheritance:
 
 .. autoclass:: CurrentUser
 
