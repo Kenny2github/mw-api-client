@@ -13,7 +13,7 @@ Only request in async methods
 
 Previous versions of the project provided the occasional :class:`property` that would make an API request (such as ``Page.content`` which called and cached ``Page.read()``). For the current version, all API requests **must happen in methods**.
 
-Additionally, only methods which actually **require an API request** will be ``async`` methods. Other methods which only act on data in memory will be regular methods.
+Additionally, only methods which actually **require an API request** are be ``async`` methods. Other methods which only act on data in memory are regular methods.
 
 Combine requests where possible
 -------------------------------
@@ -35,12 +35,19 @@ With all of the above said, if a request must be made, we **"might as well" fetc
 
 This does not mean fetching more entries of a stream than requested (there are rate limit and performance implications), but rather all data available for each entry (e.g. all ``rvprops``).
 
-This *does* mean that more than one request may be made when only one might be strictly necessary. Combining this principle with the previous three means that any ``async`` method is an entry into an unlimited number of API requests, but those requests will be combined where possible, and caches used where sensible or else populated where available.
+This *does* mean that more than one request may be made when only one might be strictly necessary. Combining this principle with the previous three means that any ``async`` method is a gateway into an unlimited number of API requests, but those requests are combined where possible, and caches used where sensible or else populated where available.
 
-Ease of use over completeness
+Compatibility or lack thereof
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Previous versions of the project were hampered and overcomplicated by a desire to support every action achievable using the API. For the current version, **fewer API features will be supported** initially, if ever, as previous versions. Instead, the design will focus on being easy to use and intuitive.
+This project's roots are in `scratch-wiki-client`_ by tjvr (f.k.a. blob8108), which was made with only the Scratch Wiki in mind, in an era when it was stuck on MediaWiki 1.22 with no upgrade in sight. It was then refined by AbyxDev (a.k.a. Kenny2github) to be a little more SW-agnostic, but development was still mostly centered around it and fairly closely tracked its series of MW version upgrades.
+
+For the current version, the scope is more focused and MediaWiki compatibility is taken more seriously.
+
+Ease of use over completeness
+-----------------------------
+
+Previous versions of the project were hampered and overcomplicated by a desire to support every action achievable using the API. For the current version, **fewer API features are supported** than in previous versions. Instead, the design focuses on being easy to use and intuitive.
 
 That said, any feature that someone can demonstrate they actually used in the previous version is guaranteed to be implemented at some point, though likely not in the same form.
 
@@ -49,22 +56,26 @@ No simple map to API
 
 Previous versions of the project attempted to maintain a certain isomorphism between the library structure and the structure of the action API. While the API structure is a useful starting point, **no guarantees are made** that the structure of the current version of the project will resemble that of the API.
 
-No deprecated features
-----------------------
+Only stable features
+--------------------
 
-Features of the API **deprecated by MediaWiki shall not be supported**, unless no method exists to perform the same action.
+Features of the API **deprecated by MediaWiki are not supported**, unless there is a desire to support the underlying action and no non-deprecated method exists to perform it.
 
-No experimental or incomplete features
---------------------------------------
+Features of the API which are **experimental or incomplete are not supported** until they are stable and complete. Notably, as of MediaWiki 1.44.0, revision slots can only be *read*, but not *edited*, through the API. As such, revision slots are an *incomplete* feature and this project will not support accessing slots other than the ``main`` slot.
 
-Features of the API which are **experimental or incomplete shall not be supported** until they are stable and complete.
+Version policy
+--------------
 
-Notably, as of MediaWiki 1.44.0, revision slots can only be *read*, but not *edited*, through the API. As such, revision slots are an *incomplete* feature and this project will not support accessing slots other than the ``main`` slot.
+The project only supports the **currently-supported LTS versions of MediaWiki**. To reflect this, the project version number's first two components matches those of the MediaWiki release it supports, i.e. version 1.43.2.3 supports the latest version of MediaWiki 1.43 as of release.
+
+The third component of the version number is incremented when a feature is added or newly supported, *or* when a breaking change is made (including removing/unsupporting features). This is intentional to force anyone who wishes to use new features to bring their code up to date in the process. This also means there is no limit to the changes that may be made, breaking or otherwise, to support a new LTS version of MediaWiki.
+
+The fourth component of the version number is incremented when a change is made that does not fall into the above categories, including bugfixes.
 
 Resemble human user
 -------------------
 
-The design of the project shall strive to make accomplishing tasks resemble the way a human user would do it, unless:
+The design of the project strives to make accomplishing tasks resemble the way a human user would do it, unless:
 
 * The task is not accomplishable by a human user;
 * The way a human user would do it is more tedious than necessary for a bot; or
@@ -73,11 +84,12 @@ The design of the project shall strive to make accomplishing tasks resemble the 
 Complete type-correctness
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This project was originally started during an era when Python 2/3 compatibility was important, and before type hinting was widely adopted. It is important now to ensure that **complete type hints are provided** and that the code is internally type-correct. VSCode's Pylance extension is the source of truth on this matter, but correctness with other checkers will be ensured on a best-effort basis.
+This project was originally started during an era when Python 2/3 compatibility was important, and before type hinting was widely adopted. It is important now to ensure that **complete type hints are provided** and that the code is internally type-correct. VSCode's Pylance extension is the source of truth on this matter, but correctness with other checkers will be ensured on a best-effort, as-reported basis.
 
 No lint
 -------
 
-Previous versions of this project placed great emphasis on passing Pylint with 10.00/10.00; however, that required exceptions to certain rules and artificially restricting functionality (especially things like "too many arguments"). This project relies only on type checking for static analysis; **lint shall not determine functionality**.
+Previous versions of this project placed great emphasis on passing Pylint with 10.00/10.00; however, that required exceptions to certain rules and artificially restricting functionality (especially things like "too many arguments"). This project relies only on type checking for static analysis; **lint does not determine functionality**.
 
 .. _generators: https://www.mediawiki.org/wiki/API:Generators
+.. _scratch-wiki-client: https://github.com/tjvr/scratch-wiki-client
