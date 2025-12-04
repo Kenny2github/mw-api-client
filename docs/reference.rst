@@ -77,3 +77,9 @@ Multi-stream fetches
 
 .. autoclass:: mw_api.page.Pages
 	:inherited-members:
+
+Miscellaneous classes
+~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: mw_api.misc.Namespace()
+	:no-show-inheritance:

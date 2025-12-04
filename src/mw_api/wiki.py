@@ -101,5 +101,17 @@ class Wiki:
             User handle.
         """
 
+    def namespace(self, key: int | str) -> Namespace:
+        """Get a :class:`~misc.Namespace` by :attr:`~misc.Namespace.id`,
+        :attr:`~misc.Namespace.name` or :attr:`~misc.Namespace.canonical` name.
+
+        Parameters:
+            key: The ID, local name, or canonical name of the namespace.
+
+        Returns:
+            Namespace handle.
+        """
+
 from .page import Page, File, Template, Category
 from .user import User, CurrentUser
+from .misc import Namespace
