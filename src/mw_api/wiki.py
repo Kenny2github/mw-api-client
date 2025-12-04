@@ -1,11 +1,12 @@
 from __future__ import annotations
+from typing import Self
 
 class Wiki:
     """
-    Parameters:
-        api_url: URL to api.php - all requests will go here
-        user_agent: User-Agent HTTP header to provide.
-            In lieu of a reasonable default, this parameter is required.
+    A handle on the site itself and the construction point for all objects
+    related to it.
+
+    |noinit| For construction, see :meth:`new`.
 
     Attributes:
         me: The currently logged-in user, or :data:`None` if not logged in
@@ -14,8 +15,14 @@ class Wiki:
 
     me: CurrentUser | None
 
-    def __init__(self, api_url: str, user_agent: str) -> None:
-        pass
+    @classmethod
+    async def new(cls, api_url: str, user_agent: str) -> Self:
+        """
+        Parameters:
+            api_url: URL to api.php - all requests will go here
+            user_agent: User-Agent HTTP header to provide.
+                In lieu of a reasonable default, this parameter is required.
+        """
 
     async def login(self, username: str, password: str) -> None:
         """Login with a bot password. For this to work, you need to have

@@ -10,7 +10,7 @@ async def login_wiki() -> mw.Wiki:
     """
     # Get a handle on the wiki we are acting on.
     # The second parameter is the user agent, and is required
-    wiki = mw.Wiki(
+    wiki = await mw.Wiki.new(
         # Example: https://en.wikipedia.org/w/api.php
         # All requests made are to this URL (+ query parameters).
         input('Enter URL to api.php: '),
