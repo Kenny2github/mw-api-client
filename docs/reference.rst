@@ -7,6 +7,10 @@ mw_api Package Reference
 
 .. |noinit| replace:: Not meant to be constructed directly.
 
+.. |limit| replace:: :attr:`~genr.Generator.limit`
+
+.. |see-limit| replace:: See :attr:`genr.Generator.limit`.
+
 Wiki class
 ~~~~~~~~~~
 

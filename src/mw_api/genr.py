@@ -60,7 +60,7 @@ class _PageProps:
         """Fetch the pages that these pages links to.
 
         Parameters:
-            limit: See :attr:`Generator.limit`.
+            limit: |see-limit|
             namespaces: Only generate links in these namespaces.
             pages: Only generate links *to* these pages. Useful for checking
                 whether those links are present.
@@ -122,7 +122,7 @@ class _PageProps:
         """Fetch the categories that these pages belongs to.
 
         Parameters:
-            limit: See :attr:`Generator.limit`.
+            limit: |see-limit|
             show_hidden: If :data:`True`, *only* generate hidden categories. If
                 :data:`False`, *don't* generate hidden categories. If
                 :data:`None`, generate all categories.
@@ -187,7 +187,7 @@ class _PageProps:
         """Fetch the pages that these pages transclude.
 
         Parameters:
-            limit: See :attr:`Generator.limit`.
+            limit: |see-limit|
             namespaces: Only generate templates in these namespaces.
             pages: Only generate these templates. Useful for checking whether those
                 templates are present.
@@ -242,7 +242,7 @@ class _PageProps:
         """Fetch the pages that link to these pages.
 
         Parameters:
-            limit: See :attr:`Generator.limit`.
+            limit: |see-limit|
             namespaces: Only generate links from pages in these namespaces.
             show_redirects: If :data:`True`, *only* generate redirects. If
                 :data:`False`, *don't* generate redirects. If :data:`None`,
@@ -343,7 +343,7 @@ class _CategoryLists(_PageLists):
         """Fetch the pages in this category.
 
         Parameters:
-            limit: See :attr:`Generator.limit`.
+            limit: |see-limit|
             namespaces: Only generate category members in these namespaces.
             descending: If :data:`True`, generate in descending order (instead
                 of the default ascending order).
@@ -411,7 +411,7 @@ class _TemplateProps(_PageProps):
         """Fetch the pages that transclude these pages.
 
         Parameters:
-            limit: See :attr:`Generator.limit`.
+            limit: |see-limit|
             namespaces: Only generate transclusions from pages in these
                 namespaces.
             show_redirects: If :data:`True`, *only* generate redirects. If
