@@ -13,7 +13,7 @@ class Wiki:
             (not recommended).
     """
 
-    me: CurrentUser | None
+    me: CurrentUser | None = None
 
     @classmethod
     async def new(cls, api_url: str, user_agent: str) -> Self:
