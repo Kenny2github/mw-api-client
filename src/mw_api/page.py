@@ -13,10 +13,11 @@ class Page(genr._PageProps, genr._PageLists):
 
     def __init__(self) -> None:
         """|noinit| Use :meth:`Wiki.page`."""
+        raise NotImplementedError
 
     async def read(self) -> str:
         """Read the contents of the ``main`` revision slot."""
-        return # type: ignore
+        raise NotImplementedError
 
     async def edit(
         self, content: str, summary: str, *,
@@ -46,6 +47,7 @@ class Page(genr._PageProps, genr._PageLists):
         Raises:
             APIError: If editing failed.
         """
+        raise NotImplementedError
 
     async def delete(
         self, reason: str, *,
@@ -62,26 +64,27 @@ class Page(genr._PageProps, genr._PageLists):
         Raises:
             APIError: If deleting failed.
         """
+        raise NotImplementedError
 
     def talk(self) -> TalkPage:
         """Get the talk page associated with this page."""
-        return # type: ignore
+        raise NotImplementedError
 
     def as_talk(self) -> TalkPage:
         """Get the same page as if it was a talk page.
         Useful for pages with ``__NEWSECTIONLINK__``.
         """
-        return # type: ignore
+        raise NotImplementedError
 
     def as_template(self) -> Template:
         """Get the same page as if it was a template.
         Useful for non-template transcluded pages.
         """
-        return # type: ignore
+        raise NotImplementedError
 
     def __or__(self, other: Page) -> Pages:
         """Combine this page with another for a multi-page fetch."""
-        return # type: ignore
+        raise NotImplementedError
 
 class TalkPage(Page):
 
@@ -89,6 +92,7 @@ class TalkPage(Page):
         """|noinit| Use :meth:`Page.talk()` or
         :meth:`Page.as_talk()`.
         """
+        raise NotImplementedError
 
     async def new_section(
         self, title: str, content: str, *,
@@ -106,21 +110,25 @@ class TalkPage(Page):
         Raises:
             APIError: If editing failed.
         """
+        raise NotImplementedError
 
 class File(genr._FileProps, genr._FileLists, Page):
 
     def __init__(self) -> None:
         """|noinit| Use :meth:`Wiki.file`."""
+        raise NotImplementedError
 
 class Template(genr._TemplateProps, genr._TemplateLists, Page):
 
     def __init__(self) -> None:
         """|noinit| Use :meth:`Wiki.template` or :meth:`Page.as_template`."""
+        raise NotImplementedError
 
 class Category(genr._CategoryProps, genr._CategoryLists, Page):
 
     def __init__(self) -> None:
         """|noinit| Use :meth:`Wiki.category`."""
+        raise NotImplementedError
 
 class Pages(genr._PageProps):
     """The result of combining more than one :class:`Page`."""

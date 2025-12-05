@@ -9,12 +9,14 @@ class User:
     wiki: Wiki
 
     def __init__(self) -> None:
-	    """Not meant to be constructed directly. Use :meth:`Wiki.user`."""
+        """|noinit| Use :meth:`Wiki.user`."""
+        raise NotImplementedError
 
 class CurrentUser(User):
     """The currently logged-in user."""
 
     def __init__(self) -> None:
-        """Not meant to be constructed directly. Use :attr:`Wiki.me`."""
+        """|noinit| Use :attr:`Wiki.me`."""
+        raise NotImplementedError
 
 from .wiki import Wiki

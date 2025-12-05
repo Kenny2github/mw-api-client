@@ -70,6 +70,7 @@ class _PageProps:
         Yields:
             If iterated with ``async for``, each page which this page links to.
         """
+        raise NotImplementedError
 
     @overload
     def categories(
@@ -135,6 +136,7 @@ class _PageProps:
             If iterated with ``async for``, each category which this page
             belongs to.
         """
+        raise NotImplementedError
 
     @overload
     def templates(
@@ -197,6 +199,7 @@ class _PageProps:
         Yields:
             If iterated with ``async for``, each page which these pages transclude.
         """
+        raise NotImplementedError
 
     @overload
     def links_here(
@@ -251,6 +254,7 @@ class _PageProps:
         Yields:
             If iterated with ``async for``, each page that links to these pages.
         """
+        raise NotImplementedError
 
     @overload
     def contributors(
@@ -308,6 +312,7 @@ class _PageProps:
         not_rights: list[str] | None = None,
     ) -> Any: # page.Page+ -> user.User
         """Fetch the users who contributed to these pages."""
+        raise NotImplementedError
 
 class _PageLists:
     pass
@@ -351,6 +356,7 @@ class _CategoryLists(_PageLists):
         Yields:
             If iterated with ``async for``, each page in this category.
         """
+        raise NotImplementedError
 
 class _FileProps(_PageProps):
     pass
@@ -422,6 +428,7 @@ class _TemplateProps(_PageProps):
             If iterated with ``async for``, each page that transcludes these
             pages.
         """
+        raise NotImplementedError
 
 class _TemplateLists(_PageLists):
     pass
@@ -496,7 +503,7 @@ class Generator(Generic[GenT, *GenTs]):
         """Combine this generator with another to return multiple different
         results.
         """
-        return # type: ignore
+        raise NotImplementedError
 
     @overload
     def __aiter__(self: Generator[GenT]) -> AsyncIterator[GenT]: ...
@@ -506,28 +513,28 @@ class Generator(Generic[GenT, *GenTs]):
         """Asynchronously iterate through this generator, fetching dynamically.
         Not supported by multi-generators.
         """
-        return # type: ignore
+        raise NotImplementedError
 
     async def fetchall(self) -> dict[GenT, dict[str, Any]]:
         """Fetch all results now, making whatever requests necessary.
         This is the only supported way to get your data for multi-generators.
         """
         # this type signature is in lieu of a PEP to re-add Union[*GenTs]
-        return # type: ignore
+        raise NotImplementedError
 
 class GeneratedGenerator(Generator[GenT, *GenTs]):
     """Second-order smart generator. |noinit| See :class:`Generator`."""
 
     def __or__(self, other: GeneratedGenerator[GenT, *OtherGenTs]
                ) -> GeneratedGenerator[GenT, *GenTs, *OtherGenTs]:
-        return # type: ignore
+        raise NotImplementedError
 
     @overload
     def __aiter__(self: GeneratedGenerator[GenT, GenGenT]) -> AsyncIterator[tuple[GenT, GenGenT]]: ...
     @overload
     def __aiter__(self: GeneratedGenerator[GenT, *GenTs]) -> Never: ...
     def __aiter__(self) -> AsyncIterator:
-        return # type: ignore
+        raise NotImplementedError
 
 class PageGenerator(_PageProps, Generator['page.Page']):
     """First-order mono-generator of :class:`Page` instances. |noinit|"""

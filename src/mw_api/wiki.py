@@ -23,6 +23,7 @@ class Wiki:
             user_agent: User-Agent HTTP header to provide.
                 In lieu of a reasonable default, this parameter is required.
         """
+        raise NotImplementedError
 
     async def login(self, username: str, password: str) -> None:
         """Login with a bot password. For this to work, you need to have
@@ -36,6 +37,7 @@ class Wiki:
         Raises:
             APIError: If login failed.
         """
+        raise NotImplementedError
 
     def page(self, title: str) -> Page:
         """Get a handle on a wiki page.
@@ -51,6 +53,7 @@ class Wiki:
         Returns:
             Instance of :class:`Page` or subclass with the given title.
         """
+        raise NotImplementedError
 
     def file(self, title: str) -> File:
         r"""Get a handle on a wiki file page.
@@ -64,6 +67,7 @@ class Wiki:
         Raises:
             ValueError: If ``title`` is not the title of a file.
         """
+        raise NotImplementedError
 
     def template(self, title: str) -> Template:
         """Get a handle on a wiki template page.
@@ -77,6 +81,7 @@ class Wiki:
         Raises:
             ValueError: If ``title`` is not the title of a template.
         """
+        raise NotImplementedError
 
     def category(self, title: str) -> Category:
         """Get a handle on a wiki category page.
@@ -90,6 +95,7 @@ class Wiki:
         Raises:
             ValueError: If ``title`` is not the title of a category.
         """
+        raise NotImplementedError
 
     def user(self, name: str) -> User:
         """Get a handle on a wiki user.
@@ -100,6 +106,7 @@ class Wiki:
         Returns:
             User handle.
         """
+        raise NotImplementedError
 
     def namespace(self, key: int | str) -> Namespace:
         """Get a :class:`~misc.Namespace` by :attr:`~misc.Namespace.id`,
@@ -111,6 +118,7 @@ class Wiki:
         Returns:
             Namespace handle.
         """
+        raise NotImplementedError
 
 from .page import Page, File, Template, Category
 from .user import User, CurrentUser
