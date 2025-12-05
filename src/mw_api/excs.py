@@ -19,6 +19,6 @@ class APIError(Exception, metaclass=_MetaGetattr):
         return type(self).__name__
 
 class APIWarning(UserWarning, APIError):
-    """A warning returned by the wiki's API. Raised by async method."""
+    """A warning returned by the wiki's API. Raised by async methods."""
 
-T = TypeVar('T', APIError, APIWarning)
+T = TypeVar('T')
