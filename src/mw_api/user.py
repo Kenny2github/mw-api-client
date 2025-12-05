@@ -30,6 +30,18 @@ class User:
         """|noinit| Use :meth:`Wiki.user`."""
         raise NotImplementedError
 
+    async def update_info(self) -> None:
+        """Fetch all available metadata about the user and cache it, updating
+        the cache if previously fetched.
+
+        If the user exists, after calling this method every :class:`property`
+        of this instance should return data instead of raising :exc:`KeyError`.
+
+        If the user does not exist, this method is of limited use beyond
+        checking whether they exist yet or whether the username is registrable.
+        """
+        raise NotImplementedError
+
     @property
     def page(self) -> Page:
         """The user's userpage."""
