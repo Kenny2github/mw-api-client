@@ -13,6 +13,8 @@ class Namespace:
         name: Displayed name for the namespace.
         canonical: Canonical (MediaWiki) name for the namespace. On Wikipedia,
             this is "Project" for the "Wikipedia" namespace.
+        first_letter_case: If :const:`True` (the norm), the first letter of
+            the title of every page in this namespace is normalized uppercase.
         subpages: If :const:`False`, slashes ``/`` in titles of pages in this
             namespace do not separate pages from subpages.
         content: If :const:`True`, pages in this namespace are `content pages`_.
