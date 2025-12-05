@@ -1,7 +1,25 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .wiki import Wiki
+    from .page import Page, TalkPage
 
 class User:
     """
+    A handle on a wiki user, uniquely identified by their :attr:`name`. There
+    is only one :class:`User` instance per :class:`~wiki.Wiki` per
+    MediaWiki-normalized username.
+
+    The :attr:`name` is the only data guaranteed to be available on a given
+    instance, which is why it is an attribute and not a :class:`property`. All
+    of the properties raise :exc:`KeyError` if the respective data is not
+    available. The respective data can be fetched and/or brought up to date by
+    calling :meth:`update_info()`.
+
+    Methods in the library that return or generate :class:`User` instances will
+    document what properties they populate, if any.
+
     Attributes:
         name: The username of the user.
     """
@@ -12,11 +30,19 @@ class User:
         """|noinit| Use :meth:`Wiki.user`."""
         raise NotImplementedError
 
+    @property
+    def page(self) -> Page:
+        """The user's userpage."""
+        raise NotImplementedError
+
+    @property
+    def talk(self) -> TalkPage:
+        """The user's talk page."""
+        raise NotImplementedError
+
 class CurrentUser(User):
     """The currently logged-in user."""
 
     def __init__(self) -> None:
         """|noinit| Use :attr:`Wiki.me`."""
         raise NotImplementedError
-
-from .wiki import Wiki
