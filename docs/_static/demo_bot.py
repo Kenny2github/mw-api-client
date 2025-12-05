@@ -57,7 +57,7 @@ async def sandbox_play(wiki: mw.Wiki) -> mw.Page:
 async def post_message(page: mw.Page) -> None:
     """Post a message on the talk page associated with the given page."""
     # Get the talk page associated with the given page
-    talk: mw.TalkPage = page.talk()
+    talk: mw.TalkPage = page.talk
 
     # Add a new section at the bottom of the page.
     await talk.new_section(

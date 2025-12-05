@@ -1,9 +1,23 @@
 from __future__ import annotations
 
 from . import genr
+from .misc import Namespace
 
 class Page(genr._PageProps, genr._PageLists):
     """
+    A handle on a wiki page, uniquely identified by its :attr:`title`. There is
+    only one :class:`Page` instance per :class:`~wiki.Wiki` per
+    MediaWiki-normalized title.
+
+    The :attr:`title` is the only data guaranteed to be available on a given
+    instance, which is why it is an attribute and not a property. All of the
+    properties raise :exc:`KeyError` if the respective data is not available.
+    The respective data can be fetched and/or brought up to date by calling
+    :meth:`update_info()`.
+
+    Methods in the library that return or generate :class:`Page` instances will
+    document what properties they populate, if any.
+
     Attributes:
         title: The full Namespace:Title of the page.
     """
@@ -13,6 +27,18 @@ class Page(genr._PageProps, genr._PageLists):
 
     def __init__(self) -> None:
         """|noinit| Use :meth:`Wiki.page`."""
+        raise NotImplementedError
+
+    async def update_info(self) -> None:
+        """Fetch all available metadata about the page and cache it, updating
+        the cache if previously fetched.
+
+        If the page exists, after calling this method, every :class:`property`
+        of this instance should return data instead of raising :exc:`KeyError`.
+
+        If the page does not exist, this method is of limited use beyond
+        checking whether it exists yet.
+        """
         raise NotImplementedError
 
     async def read(self) -> str:
@@ -66,8 +92,14 @@ class Page(genr._PageProps, genr._PageLists):
         """
         raise NotImplementedError
 
+    @property
     def talk(self) -> TalkPage:
-        """Get the talk page associated with this page."""
+        """The talk page associated with this page."""
+        raise NotImplementedError
+
+    @property
+    def namespace(self) -> Namespace:
+        """The namespace to which this page belongs."""
         raise NotImplementedError
 
     def as_talk(self) -> TalkPage:
