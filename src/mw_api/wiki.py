@@ -48,10 +48,24 @@ class Wiki:
         included in the title.
 
         Parameters:
-            title: The full title (Namespace:Title) of the page.
+            title: The page's full title (Namespace:Title).
 
         Returns:
             Instance of :class:`Page` or subclass with the given title.
+        """
+        raise NotImplementedError
+
+    def talk_page(self, title: str) -> TalkPage:
+        """Get a handle on a wiki talk page (in any talk namespace).
+
+        Parameters:
+            title: The page's full title (Talk:Title, User talk:Title, etc.).
+
+        Returns:
+            Page handle.
+
+        Raises:
+            ValueError: If ``title`` is not the title of a talk page.
         """
         raise NotImplementedError
 
@@ -59,7 +73,7 @@ class Wiki:
         r"""Get a handle on a wiki file page.
 
         Parameters:
-            title: The full title (\File:Title) of the page.
+            title: The page's full title (File\:Title).
 
         Returns:
             Page handle.
@@ -73,7 +87,7 @@ class Wiki:
         """Get a handle on a wiki template page.
 
         Parameters:
-            title: The full title (Template:Title) of the page.
+            title: The page's full title (Template:Title).
 
         Returns:
             Page handle.
@@ -87,7 +101,7 @@ class Wiki:
         """Get a handle on a wiki category page.
 
         Parameters:
-            title: The full title (Category:Title) of the page.
+            title: The page's full title (Category:Title).
 
         Returns:
             Page handle.
@@ -109,7 +123,7 @@ class Wiki:
         raise NotImplementedError
 
     def namespace(self, key: int | str) -> Namespace:
-        """Get a :class:`~misc.Namespace` by :attr:`~misc.Namespace.id`,
+        """Get a namespace by :attr:`~misc.Namespace.id`,
         :attr:`~misc.Namespace.name` or :attr:`~misc.Namespace.canonical` name.
 
         Parameters:
@@ -120,6 +134,6 @@ class Wiki:
         """
         raise NotImplementedError
 
-from .page import Page, File, Template, Category
+from .page import Page, TalkPage, File, Template, Category
 from .user import User, CurrentUser
 from .misc import Namespace
