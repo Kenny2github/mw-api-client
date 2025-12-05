@@ -18,72 +18,72 @@ mw_api Package Reference
 Wiki class
 ~~~~~~~~~~
 
-.. autoclass:: Wiki
+.. autoclass:: Wiki()
 	:class-doc-from: class
 	:no-show-inheritance:
 
 Exceptions
 ~~~~~~~~~~
 
-.. autoexception:: APIError
+.. autoexception:: APIError()
 	:no-show-inheritance:
 
-.. autoexception:: APIWarning
+.. autoexception:: APIWarning()
 	:inherited-members: Exception
 
 Page classes
 ~~~~~~~~~~~~
 
-.. autoclass:: Page
+.. autoclass:: Page()
 	:inherited-members:
 	:no-show-inheritance:
 
-.. autoclass:: TalkPage
+.. autoclass:: TalkPage()
 	:inherited-members: Page
 
-.. autoclass:: File
+.. autoclass:: File()
 	:inherited-members: Page
 
-.. autoclass:: Template
+.. autoclass:: Template()
 	:inherited-members: Page
 
-.. autoclass:: Category
+.. autoclass:: Category()
 	:inherited-members: Page
 
 User classes
 ~~~~~~~~~~~~
 
-.. autoclass:: User
+.. autoclass:: User()
 	:no-show-inheritance:
 
-.. autoclass:: CurrentUser
+.. autoclass:: CurrentUser()
 
 Multi-stream fetches
 ~~~~~~~~~~~~~~~~~~~~
 
-.. autoclass:: mw_api.genr.Generator
+.. autoclass:: mw_api.genr.Generator()
 	:special-members:
 
-.. autoclass:: mw_api.genr.GeneratedGenerator
+.. autoclass:: mw_api.genr.GeneratedGenerator()
 	:special-members:
 	:inherited-members: Generic
 
-.. autoclass:: mw_api.genr.PageGenerator
+.. autoclass:: mw_api.genr.PageGenerator()
 	:inherited-members: Generator
 
-.. autoclass:: mw_api.genr.CategoryGenerator
+.. autoclass:: mw_api.genr.CategoryGenerator()
 	:inherited-members: _PageProps
 
-.. autoclass:: mw_api.genr.FileGenerator
+.. autoclass:: mw_api.genr.FileGenerator()
 	:inherited-members: _PageProps
 
-.. autoclass:: mw_api.genr.TemplateGenerator
+.. autoclass:: mw_api.genr.TemplateGenerator()
 	:inherited-members: _PageProps
 
-.. autoclass:: mw_api.genr.UserGenerator
+.. autoclass:: mw_api.genr.UserGenerator()
 	:inherited-members: Generator
 
-.. autoclass:: mw_api.page.Pages
+.. autoclass:: mw_api.page.Pages()
 	:inherited-members:
 
 Miscellaneous classes
