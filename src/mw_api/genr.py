@@ -1,7 +1,13 @@
 from __future__ import annotations
-from typing import Any, AsyncIterator, Generic, Literal, Never, ParamSpec, TypeVar, TypeVarTuple, Union, overload
+from typing import (
+    TYPE_CHECKING, Any, AsyncIterator, Generic, Literal, Never, ParamSpec,
+    TypeVar, TypeVarTuple, Union, overload
+)
 
 from .misc import Limit, Namespace
+
+if TYPE_CHECKING:
+    from . import page, user
 
 AnnoT = TypeVar('AnnoT')
 P = ParamSpec('P')
@@ -571,5 +577,3 @@ class UserGenerator(Generator['user.User']):
 
 class OneUserGenerator(UserGenerator):
     pass
-
-from . import page, user

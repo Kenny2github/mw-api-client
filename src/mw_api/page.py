@@ -1,7 +1,9 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from . import genr
-from .misc import Namespace
+if TYPE_CHECKING:
+    from .misc import Namespace
 
 class Page(genr._PageProps, genr._PageLists):
     """
