@@ -11,14 +11,7 @@ class User:
     is only one :class:`User` instance per :class:`~wiki.Wiki` per
     MediaWiki-normalized username.
 
-    The :attr:`name` is the only data guaranteed to be available on a given
-    instance, which is why it is an attribute and not a :class:`property`. All
-    of the properties raise :exc:`KeyError` if the respective data is not
-    available. The respective data can be fetched and/or brought up to date by
-    calling :meth:`update_info()`.
-
-    Methods in the library that return or generate :class:`User` instances will
-    document what properties they populate, if any.
+    The :attr:`name` |key-attr| |population| :meth:`update_info`.
 
     Attributes:
         name: The username of the user.

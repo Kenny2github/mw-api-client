@@ -11,14 +11,7 @@ class Page(genr._PageProps, genr._PageLists):
     only one :class:`Page` instance per :class:`~wiki.Wiki` per
     MediaWiki-normalized title.
 
-    The :attr:`title` is the only data guaranteed to be available on a given
-    instance, which is why it is an attribute and not a :class:`property`. All
-    of the properties raise :exc:`KeyError` if the respective data is not
-    available. The respective data can be fetched and/or brought up to date by
-    calling :meth:`update_info()`.
-
-    Methods in the library that return or generate :class:`Page` instances will
-    document what properties they populate, if any.
+    The :attr:`title` |key-attr| |population| :meth:`update_info`.
 
     Attributes:
         title: The full Namespace:Title of the page.

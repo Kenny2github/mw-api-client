@@ -11,6 +11,10 @@ mw_api Package Reference
 
 .. |see-limit| replace:: See :attr:`genr.Generator.limit`.
 
+.. |key-attr| replace:: is the only data guaranteed to be available on a given instance, which is why it is an attribute and not a :class:`property`. All of the properties raise :exc:`KeyError` if the respective data is not available. Methods in the library that return or generate instances of this class will document what properties they populate, if any.
+
+.. |population| replace:: The respective data can be fetched and/or brought up to date by calling
+
 Wiki class
 ~~~~~~~~~~
 
