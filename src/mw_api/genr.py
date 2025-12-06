@@ -332,6 +332,61 @@ class _PageProps:
         """
         raise NotImplementedError
 
+    @overload
+    def redirects(
+        self: page.Page, limit: Literal[1], *,
+        namespaces: list[Namespace] | None = None,
+        fragment: bool | None = None,
+    ) -> OnePageGenerator: ...
+    @overload
+    def redirects(
+        self: page.Page, limit: Limit = None, *,
+        namespaces: list[Namespace] | None = None,
+        fragment: bool | None = None,
+    ) -> PageGenerator: ...
+    @overload
+    def redirects(
+        self: page.Pages, limit: Literal[1], *,
+        namespaces: list[Namespace] | None = None,
+        fragment: bool | None = None,
+    ) -> OnePageGenerator: ...
+    @overload
+    def redirects(
+        self: page.Pages, limit: Limit = None, *,
+        namespaces: list[Namespace] | None = None,
+        fragment: bool | None = None,
+    ) -> PageGenerator: ...
+    @overload
+    def redirects(
+        self: OnePageGenerator, limit: Limit = None, *,
+        namespaces: list[Namespace] | None = None,
+        fragment: bool | None = None,
+    ) -> GeneratedGenerator[page.Page, page.Page]: ...
+    @overload
+    def redirects(
+        self: PageGenerator, limit: None = None, *,
+        namespaces: list[Namespace] | None = None,
+        fragment: bool | None = None,
+    ) -> GeneratedGenerator[page.Page, page.Page]: ...
+    def redirects(
+        self, limit: Limit = None, *,
+        namespaces: list[Namespace] | None = None,
+        fragment: bool | None = None,
+    ) -> Any: # page.Page+ -> page.Page
+        """Fetch the pages that redirect to these pages.
+
+        Parameters:
+            namespaces: Only generate redirects from these namespaces.
+            fragment: If :const:`True`, only show redirects with a fragment.
+                If :const:`False`, only show redirects without a fragment.
+                If :const:`None`, generate fragment-agnostically.
+
+        Yields:
+            If iterated with ``async for``, each page that redirects to these
+            pages.
+        """
+        raise NotImplementedError
+
 class _PageLists:
     pass
 
