@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 class User:
     """
     A handle on a wiki user, uniquely identified by their :attr:`name`. There
-    is only one :class:`User` instance per :class:`~wiki.Wiki` per
+    is only one :class:`User` instance per :class:`Wiki` per
     MediaWiki-normalized username.
 
     The :attr:`name` |key-attr| |population| :meth:`update_info`.

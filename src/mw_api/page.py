@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 class Page(genr._PageProps, genr._PageLists):
     """
     A handle on a wiki page, uniquely identified by its :attr:`title`. There is
-    only one :class:`Page` instance per :class:`~wiki.Wiki` per
+    only one :class:`Page` instance per :class:`Wiki` per
     MediaWiki-normalized title.
 
     The :attr:`title` |key-attr| |population| :meth:`update_info`.
