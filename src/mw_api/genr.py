@@ -266,58 +266,70 @@ class _PageProps:
     def contributors(
         self: page.Page, limit: Literal[1], *,
         only_groups: list[str] | None = None,
-        not_groups: list[str] | None = None,
+        exclude_groups: list[str] | None = None,
         only_rights: list[str] | None = None,
-        not_rights: list[str] | None = None,
+        exclude_rights: list[str] | None = None,
     ) -> OneUserGenerator: ...
     @overload
     def contributors(
         self: page.Page, limit: Limit = None, *,
         only_groups: list[str] | None = None,
-        not_groups: list[str] | None = None,
+        exclude_groups: list[str] | None = None,
         only_rights: list[str] | None = None,
-        not_rights: list[str] | None = None,
+        exclude_rights: list[str] | None = None,
     ) -> UserGenerator: ...
     @overload
     def contributors(
         self: page.Pages, limit: Literal[1], *,
         only_groups: list[str] | None = None,
-        not_groups: list[str] | None = None,
+        exclude_groups: list[str] | None = None,
         only_rights: list[str] | None = None,
-        not_rights: list[str] | None = None,
+        exclude_rights: list[str] | None = None,
     ) -> OneUserGenerator: ...
     @overload
     def contributors(
         self: page.Pages, limit: Limit = None, *,
         only_groups: list[str] | None = None,
-        not_groups: list[str] | None = None,
+        exclude_groups: list[str] | None = None,
         only_rights: list[str] | None = None,
-        not_rights: list[str] | None = None,
+        exclude_rights: list[str] | None = None,
     ) -> UserGenerator: ...
     @overload
     def contributors(
         self: OnePageGenerator, limit: Limit = None, *,
         only_groups: list[str] | None = None,
-        not_groups: list[str] | None = None,
+        exclude_groups: list[str] | None = None,
         only_rights: list[str] | None = None,
-        not_rights: list[str] | None = None,
+        exclude_rights: list[str] | None = None,
     ) -> GeneratedGenerator[page.Page, user.User]: ...
     @overload
     def contributors(
         self: PageGenerator, limit: None = None, *,
         only_groups: list[str] | None = None,
-        not_groups: list[str] | None = None,
+        exclude_groups: list[str] | None = None,
         only_rights: list[str] | None = None,
-        not_rights: list[str] | None = None,
+        exclude_rights: list[str] | None = None,
     ) -> GeneratedGenerator[page.Page, user.User]: ...
     def contributors(
         self, limit: Limit = None, *,
         only_groups: list[str] | None = None,
-        not_groups: list[str] | None = None,
+        exclude_groups: list[str] | None = None,
         only_rights: list[str] | None = None,
-        not_rights: list[str] | None = None,
+        exclude_rights: list[str] | None = None,
     ) -> Any: # page.Page+ -> user.User
-        """Fetch the users who contributed to these pages."""
+        """Fetch the users who contributed to these pages.
+
+        Parameters:
+            limit: |see-limit|
+            only_groups: Only include users explicitly in the given groups.
+            exclude_groups: Exclude users explicitly in the given groups.
+            only_rights: Only include users explicitly having the given rights.
+            exclude_rights: Exclude users explicitly having the given rights.
+
+        Yields:
+            If iterated with ``async for``, each user who contributed to these
+            pages.
+        """
         raise NotImplementedError
 
 class _PageLists:
