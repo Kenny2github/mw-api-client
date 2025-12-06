@@ -2,6 +2,7 @@ from .wiki import Wiki
 from .excs import APIError, APIWarning
 from .page import Page, TalkPage, File, Template, Category
 from .user import User, CurrentUser
+from .misc import Namespace, RecentChange, Tag
 
 __all__ = [
     'Wiki',
@@ -14,4 +15,7 @@ __all__ = [
     'Category',
     'User',
     'CurrentUser',
+    'Namespace',
+    'RecentChange',
+    'Tag',
 ]

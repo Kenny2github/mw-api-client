@@ -7,7 +7,7 @@ from typing import (
 from .misc import Limit, Namespace
 
 if TYPE_CHECKING:
-    from . import page, user
+    from . import page, user, misc
 
 AnnoT = TypeVar('AnnoT')
 P = ParamSpec('P')
@@ -445,7 +445,7 @@ class _UserProps:
 class _UserLists:
     pass
 
-Generatable = Union['page.Page', 'user.User']
+Generatable = Union['page.Page', 'user.User', 'misc.RecentChange']
 GenT = TypeVar('GenT', covariant=True, bound=Generatable)
 GenGenT = TypeVar('GenGenT', covariant=True, bound=Generatable)
 GenTs = TypeVarTuple('GenTs')
@@ -577,3 +577,9 @@ class UserGenerator(Generator['user.User']):
 
 class OneUserGenerator(UserGenerator):
     pass
+
+class RecentChangeGenerator(Generator['misc.RecentChange']):
+    """First-order mono-generator of :class:`misc.RecentChange` instances.
+    |noinit| Has no methods (the ``recentchanges`` generator can only generate
+    page titles or revision IDs).
+    """

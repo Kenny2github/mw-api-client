@@ -130,11 +130,11 @@ async def patrol_all_help(wiki: mw.Wiki) -> None:
     """Patrol all changes in the Help namespace."""
     # Only fetch unpatrolled changes in the Help namespace
     async for change in wiki.recentchanges(
-        limit=None, namespace=wiki.namespace('Help'),
+        limit=None, namespaces=[wiki.namespace('Help')],
         show=['unpatrolled']
     ):
         # Patrol the change
-        print('Patrolling change to', change.title)
+        print('Patrolling change to', change.page.title)
         await change.patrol()
         # Pause 1 second between patrols
         await asyncio.sleep(1)

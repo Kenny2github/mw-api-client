@@ -1,5 +1,6 @@
 from __future__ import annotations
-from typing import Self
+from datetime import datetime
+from typing import Literal, Self
 
 class Wiki:
     """
@@ -28,6 +29,12 @@ class Wiki:
     async def update_namespaces(self) -> None:
         """Fetch all available metadata about namespaces on this wiki and cache
         it, updating the cache if previously fetched. Called by :meth:`new`.
+        """
+        raise NotImplementedError
+
+    async def update_tags(self) -> None:
+        """Fetch all available metadata about tags on this wiki and cache it,
+        updating the cache if previously fetched. Called by :meth:`new`.
         """
         raise NotImplementedError
 
@@ -140,6 +147,91 @@ class Wiki:
         """
         raise NotImplementedError
 
+    ##### Lists #####
+
+    def recentchanges(
+        self, limit: Limit = None, *,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        oldest_first: bool = False,
+        namespaces: list[Namespace] | None = None,
+        user: User | None = None,
+        exclude_user: User | None = None,
+        tag: Tag | None = None,
+        show: list[Literal['!anon', '!autopatrolled', '!bot', '!minor', '!patrolled', '!redirect', 'anon', 'autopatrolled', 'bot', 'minor', 'patrolled', 'redirect', 'unpatrolled']] | None = None,
+        types: list[Literal['categorize', 'edit', 'external', 'log', 'new']] | None = None,
+        top_only: bool = False,
+        page: Page | None = None,
+    ) -> genr.RecentChangeGenerator:
+        """Fetch recent changes.
+
+        Parameters:
+            start: The timestamp to start enumerating from.
+            end: The timestamp to end enumerating.
+            oldest_first: If :const:`True`, list oldest first instead of
+                newest first.
+            namespaces: Only show changes in these namespaces.
+            user: Only list changes by this user.
+            exclude_user: Don't list changes by this user.
+            tag: Only list changes with this tag.
+            show: Only show changes that are (not) made by anonymous users
+                [(!)anon], (not) autopatrolled [(!)autopatrolled], (not) made
+                by a bot [(!)bot], (not) minor edits [(!)minor], patrolled
+                [patrolled], not patrolled [!patrolled or unpatrolled], and/or
+                (not) changes to redirect pages [(!)redirect].
+            types: Only show changes that are page edits [edit], log entries
+                [log], categorizations [categorize], page creations [new], or
+                external changes [external].
+            top_only: Only show most recent edits to pages.
+            page: Only show changes to this page.
+
+        Yields:
+            If iterated with ``async for``, each recent change.
+        """
+        raise NotImplementedError
+
+    def recently_changed_pages(
+        self, limit: Limit = None, *,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        oldest_first: bool = False,
+        namespaces: list[Namespace] | None = None,
+        user: User | None = None,
+        exclude_user: User | None = None,
+        tag: Tag | None = None,
+        show: list[Literal['!anon', '!autopatrolled', '!bot', '!minor', '!patrolled', '!redirect', 'anon', 'autopatrolled', 'bot', 'minor', 'patrolled', 'redirect', 'unpatrolled']] | None = None,
+        types: list[Literal['categorize', 'edit', 'external', 'log', 'new']] | None = None,
+        top_only: bool = False,
+    ) -> genr.PageGenerator:
+        """Fetch recently changed pages. As it would be pointless to fetch
+        recently changed pages and filter to a known page, the ``page``
+        parameter is not supported for this method.
+
+        Parameters:
+            start: The timestamp to start enumerating from.
+            end: The timestamp to end enumerating.
+            oldest_first: If :const:`True`, list oldest first instead of
+                newest first.
+            namespaces: Only show changes in these namespaces.
+            user: Only list changes by this user.
+            exclude_user: Don't list changes by this user.
+            tag: Only list changes with this tag.
+            show: Only show changes that are (not) made by anonymous users
+                [(!)anon], (not) autopatrolled [(!)autopatrolled], (not) made
+                by a bot [(!)bot], (not) minor edits [(!)minor], patrolled
+                [patrolled], not patrolled [!patrolled or unpatrolled], and/or
+                (not) changes to redirect pages [(!)redirect].
+            types: Only show changes that are page edits [edit], log entries
+                [log], categorizations [categorize], page creations [new], or
+                external changes [external].
+            top_only: Only show most recent edits to pages.
+
+        Yields:
+            If iterated with ``async for``, each recently changed page.
+        """
+        raise NotImplementedError
+
 from .page import Page, TalkPage, File, Template, Category
+from . import genr
 from .user import User, CurrentUser
-from .misc import Namespace
+from .misc import Limit, Namespace, Tag

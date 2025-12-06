@@ -83,6 +83,9 @@ Multi-stream fetches
 .. autoclass:: mw_api.genr.UserGenerator()
 	:inherited-members: Generator
 
+.. autoclass:: mw_api.genr.RecentChangeGenerator()
+	:inherited-members: Generator
+
 .. autoclass:: mw_api.page.Pages()
 	:inherited-members:
 
@@ -90,4 +93,10 @@ Miscellaneous classes
 ~~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: Namespace()
+	:no-show-inheritance:
+
+.. autoclass:: RecentChange()
+	:no-show-inheritance:
+
+.. autoclass:: Tag()
 	:no-show-inheritance:
