@@ -1,3 +1,4 @@
+from importlib.metadata import version as _get_version
 from .wiki import Wiki
 from .excs import APIError, APIWarning
 from .page import Page, TalkPage, File, Template, Category
@@ -19,3 +20,5 @@ __all__ = [
     'RecentChange',
     'Tag',
 ]
+
+__version__ = _get_version('mw-api-client')

@@ -1,5 +1,4 @@
 from getpass import getpass
-from importlib.metadata import version as get_version
 import asyncio
 import mw_api as mw
 import mwparserfromhell as mwp
@@ -15,7 +14,7 @@ async def login_wiki() -> mw.Wiki:
         # All requests made are to this URL (+ query parameters).
         input('Enter URL to api.php: '),
         # This is the user agent, and is required (rather than providing a default)
-        f'mw-api-client-demo/0.0.0, mw-api-client/{get_version("mw-api-client")}'
+        f'mw-api-client-demo/0.0.0, mw-api-client/{mw.__version__}'
     )
 
     # Login with a bot password. For this to work, you need to have
