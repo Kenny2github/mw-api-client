@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 from . import genr
 if TYPE_CHECKING:
@@ -111,6 +111,10 @@ class Page(genr._PageProps, genr._PageLists):
 
     def __or__(self, other: Page) -> Pages:
         """Combine this page with another for a multi-page fetch."""
+        raise NotImplementedError
+
+    def __truediv__(self, other: str) -> Self:
+        """Get a subpage of this page (if enabled in this namespace.)"""
         raise NotImplementedError
 
 class TalkPage(Page):
