@@ -1,36 +1,69 @@
-from dataclasses import dataclass
+from __future__ import annotations
 from typing import Literal
 
 Limit = int | Literal['max'] | None
 
-@dataclass
 class Namespace:
     """
-    A (built-in or custom) namespace. |noinit|
+    A (built-in or custom) namespace.
+
+    The :attr:`id` |key-attr| |population| :meth:`Wiki.update_namespaces`.
 
     Attributes:
         id: Namespace ID configured in MediaWiki.
-        name: Displayed name for the namespace.
-        canonical: Canonical (MediaWiki) name for the namespace. On Wikipedia,
-            this is "Project" for the "Wikipedia" namespace.
-        first_letter_case: If :const:`True` (the norm), the first letter of
-            the title of every page in this namespace is normalized uppercase.
-        subpages: If :const:`False`, slashes ``/`` in titles of pages in this
-            namespace do not separate pages from subpages.
-        content: If :const:`True`, pages in this namespace are `content pages`_.
-        nonincludable: If :const:`True`, pages in this namespace cannot be
-            transcluded (via ``{{page}}``).
-        defaultcontentmodel: The default `content model`_ of pages in this
-            namespace on creation.
-
-    .. _content pages: https://www.mediawiki.org/wiki/Manual:$wgContentNamespaces
-    .. _content model: https://www.mediawiki.org/wiki/Content_model
     """
+
     id: int
-    name: str
-    first_letter_case: bool
-    subpages: bool
-    content: bool
-    nonincludable: bool
-    canonical: str = ''
-    defaultcontentmodel: str = 'wikitext'
+
+    def __init__(self) -> None:
+        """|noinit| Use :meth:`Wiki.namespace`."""
+        raise NotImplementedError
+
+    @property
+    def name(self) -> str:
+        """Displayed name for the namespace."""
+        raise NotImplementedError
+
+    @property
+    def canonical(self) -> str:
+        """Canonical (MediaWiki) name for the namespace. On Wikipedia, this is
+        "Project" for the "Wikipedia" namespace.
+        """
+        raise NotImplementedError
+
+    @property
+    def first_letter_case(self) -> bool:
+        """If :const:`True` (the norm), the first letter of the title of every
+        page in this namespace is normalized uppercase.
+        """
+        raise NotImplementedError
+
+    @property
+    def subpages(self) -> bool:
+        """If :const:`False`, slashes ``/`` in titles of pages in this
+        namespace do not separate pages from subpages.
+        """
+        raise NotImplementedError
+
+    @property
+    def content(self) -> bool:
+        """If :const:`True`, pages in this namespace are `content pages`_.
+
+        .. _content pages: https://www.mediawiki.org/wiki/Manual:$wgContentNamespaces
+        """
+        raise NotImplementedError
+
+    @property
+    def nonincludable(self) -> bool:
+        """If :const:`True`, pages in this namespace cannot be transcluded (via
+        ``{{page}}``).
+        """
+        raise NotImplementedError
+
+    @property
+    def defaultcontentmodel(self) -> str:
+        """The default `content model`_ of pages in this namespace on creation.
+
+        .. _content model: https://www.mediawiki.org/wiki/Content_model
+        """
+        raise NotImplementedError

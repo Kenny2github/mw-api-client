@@ -25,6 +25,12 @@ class Wiki:
         """
         raise NotImplementedError
 
+    async def update_namespaces(self) -> None:
+        """Fetch all available metadata about namespaces on this wiki and cache
+        it, updating the cache if previously fetched. Called by :meth:`new`.
+        """
+        raise NotImplementedError
+
     async def login(self, username: str, password: str) -> None:
         """Login with a bot password. For this to work, you need to have
         generated a password on Special:BotPasswords. Regular login using the

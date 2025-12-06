@@ -89,5 +89,5 @@ Multi-stream fetches
 Miscellaneous classes
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. autoclass:: mw_api.misc.Namespace()
+.. autoclass:: Namespace()
 	:no-show-inheritance:
