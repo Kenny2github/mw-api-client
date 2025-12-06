@@ -10,11 +10,10 @@ class Wiki:
     |noinit| For construction, see :meth:`new`.
 
     Attributes:
-        me: The currently logged-in user, or :data:`None` if not logged in
-            (not recommended).
+        me: The currently logged-in/anonymous user.
     """
 
-    me: CurrentUser | None = None
+    me: CurrentUser
 
     @classmethod
     async def new(cls, api_url: str, user_agent: str) -> Self:
