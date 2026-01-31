@@ -302,7 +302,7 @@ corresponding API module's insanity, instability, and pending deprecation.")
         params.update(evil)
         return self._mklist(params, 'images', Page, Page)
 
-    def info(self, testactions=None, **evil):
+    def info(self, testactions='read', **evil):
         """Return a list of Pages in this Queue with their info updated.
         The Queue must contain only Pages.
         """
@@ -312,7 +312,7 @@ corresponding API module's insanity, instability, and pending deprecation.")
             'titles': titles,
             'prop': 'info',
             'inprop': 'protection|talkid|watched|watchers|visitingwatchers|\
-notificationtimestamp|subjectid|url|readable|preloadcontent|displaytitle',
+notificationtimestamp|subjectid|url|preloadcontent|displaytitle',
             'intestactions': (testactions
                               if isinstance(testactions, str)
                               else '|'.join(testactions))
