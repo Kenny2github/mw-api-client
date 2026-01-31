@@ -112,7 +112,8 @@ class Page(object):
             'prop': 'info',
             'inprop': 'protection|talkid|watched|watchers|visitingwatchers|'
                       + 'notificationtimestamp|subjectid|url|preloadcontent|'
-                      + 'displaytitle'
+                      + 'displaytitle',
+            'intestactions': 'read',
         }
         data = self.wiki.request(**arguments)
         page_data = tuple(data["query"]["pages"].values())[0]
