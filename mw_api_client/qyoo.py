@@ -312,7 +312,7 @@ corresponding API module's insanity, instability, and pending deprecation.")
             'titles': titles,
             'prop': 'info',
             'inprop': 'protection|talkid|watched|watchers|visitingwatchers|\
-notificationtimestamp|subjectid|url|preload|displaytitle',
+notificationtimestamp|subjectid|url|preloadcontent|displaytitle',
             'intestactions': (testactions
                               if isinstance(testactions, str)
                               else '|'.join(testactions))

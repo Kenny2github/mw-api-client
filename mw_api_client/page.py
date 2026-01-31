@@ -111,7 +111,7 @@ class Page(object):
             'titles': self.title,
             'prop': 'info',
             'inprop': 'protection|talkid|watched|watchers|visitingwatchers|'
-                      + 'notificationtimestamp|subjectid|url|preload|'
+                      + 'notificationtimestamp|subjectid|url|preloadcontent|'
                       + 'displaytitle',
             'intestactions': 'read',
         }
