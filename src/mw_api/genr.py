@@ -610,37 +610,41 @@ class GeneratedGenerator(Generator[GenT, *GenTs]):
         raise NotImplementedError
 
 class PageGenerator(_PageProps, Generator['page.Page']):
-    """First-order mono-generator of :class:`~page.Page` instances. |noinit|"""
+    """First-order mono-generator of :class:`~mw_api.page.Page` instances.
+    |noinit|
+    """
 
 class OnePageGenerator(PageGenerator):
     pass
 
 class CategoryGenerator(_CategoryProps, Generator['page.Category']):
-    """First-order mono-generator of :class:`~page.Category` instances. |noinit|
-    Includes :class:`PageGenerator` methods.
+    """First-order mono-generator of :class:`~mw_api.page.Category` instances.
+    |noinit| Includes :class:`PageGenerator` methods.
     """
 
 class OneCategoryGenerator(CategoryGenerator):
     pass
 
 class FileGenerator(_FileProps, Generator['page.File']):
-    """First-order mono-generator of :class:`~page.File` instances. |noinit|
-    Includes :class:`PageGenerator` methods.
+    """First-order mono-generator of :class:`~mw_api.page.File` instances.
+    |noinit| Includes :class:`PageGenerator` methods.
     """
 
 class OneFileGenerator(FileGenerator):
     pass
 
 class TemplateGenerator(_TemplateProps, Generator['page.Template']):
-    """First-order mono-generator of :class:`~page.Template` instances. |noinit|
-    Includes :class:`PageGenerator` methods.
+    """First-order mono-generator of :class:`~mw_api.page.Template` instances.
+    |noinit| Includes :class:`PageGenerator` methods.
     """
 
 class OneTemplateGenerator(TemplateGenerator):
     pass
 
 class UserGenerator(Generator['user.User']):
-    """First-order mono-generator of :class:`~user.User` instances. |noinit|"""
+    """First-order mono-generator of :class:`~mw_api.user.User` instances.
+    |noinit|
+    """
 
 class OneUserGenerator(UserGenerator):
     pass
