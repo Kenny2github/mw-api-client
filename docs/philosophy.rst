@@ -66,11 +66,20 @@ Features of the API which are **experimental or incomplete are not supported** u
 Version policy
 --------------
 
-The project only supports the **currently-supported LTS versions of MediaWiki**. To reflect this, the project version number's first two components matches those of the MediaWiki release it supports, i.e. version 1.43.2.3 supports the latest version of MediaWiki 1.43 as of release.
+- The project only supports the **latest currently-supported LTS versions of MediaWiki**.
+	- To reflect this, the second component of each release's version number matches that of the MediaWiki version it supports, i.e. release ``4.43.2.3`` supports the version of MediaWiki 1.43 which is newest as of the ``2.3`` release.
+- The third component of the version number is incremented when a feature is added or newly supported, *or* when a breaking change is made (including removing/unsupporting features).
+	- This is intentional to force anyone who wishes to use new features to bring their code up to date in the process.
+	- That said, **breaking changes will be preceded by at least two bugfix releases** in which the use of the to-be-broken feature is deprecated.
+	- This also means there is no limit to the changes that may be made, breaking or otherwise, to support a new LTS version of MediaWiki.
+- The fourth component of the version number is incremented when a change is made that does not fall into the above categories, including bugfixes.
+	- A change in solely this component is the only change guaranteed to be backwards compatible.
+	- One last bugfix release may be made after the corresponding LTS version reaches EOL, containing only fixes actually implemented but pending release.
+- The project's **Python version support** is tied to the `MediaWiki version lifecycle`_ and the `Python version lifecycle`_.
+	- The maximum Python version is the newest version of Python released before the project's corresponding MediaWiki LTS version goes EOL.
+	- The minimum Python version is the oldest version still in the "bugfix" phase as of the first release of the project's corresponding MediaWiki LTS version, or a newer version if new Python features are needed/wanted to support a particular MediaWiki release.
 
-The third component of the version number is incremented when a feature is added or newly supported, *or* when a breaking change is made (including removing/unsupporting features). This is intentional to force anyone who wishes to use new features to bring their code up to date in the process. This also means there is no limit to the changes that may be made, breaking or otherwise, to support a new LTS version of MediaWiki.
-
-The fourth component of the version number is incremented when a change is made that does not fall into the above categories, including bugfixes.
+.. mermaid:: versioning.mmd
 
 Resemble human user
 -------------------
@@ -93,3 +102,5 @@ Previous versions of this project placed great emphasis on passing Pylint with 1
 
 .. _generators: https://www.mediawiki.org/wiki/API:Generators
 .. _scratch-wiki-client: https://github.com/tjvr/scratch-wiki-client
+.. _MediaWiki version lifecycle: https://www.mediawiki.org/wiki/Version_lifecycle
+.. _Python version lifecycle: https://peps.python.org/pep-0602/

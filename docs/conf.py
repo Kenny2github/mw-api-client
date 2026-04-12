@@ -21,6 +21,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
     'sphinx.ext.napoleon',
+    'sphinxcontrib.mermaid',
 ]
 
 python_use_unqualified_type_names = True
@@ -45,6 +46,10 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'furo'
+html_theme_options = {
+    'source_repository': 'https://github.com/Kenny2github/mw-api-client',
+    'source_branch': 'main',
+}
 html_static_path = ['_static']
 
 # -- Hooks -------------------------------------------------------------------
