@@ -7,9 +7,9 @@ mw_api Package Reference
 
 .. |noinit| replace:: Not meant to be constructed directly.
 
-.. |limit| replace:: :attr:`~genr.Generator.limit`
+.. |limit| replace:: :attr:`~mw_api.genr.Generator.limit`
 
-.. |see-limit| replace:: See :attr:`genr.Generator.limit`.
+.. |see-limit| replace:: See :attr:`mw_api.genr.Generator.limit`.
 
 .. |key-attr| replace:: is the only data guaranteed to be available on a given instance, which is why it is an attribute and not a :class:`property`. All of the properties raise :exc:`KeyError` if the respective data is not available. Methods in the library that return or generate instances of this class will document what properties they populate, if any.
 
@@ -29,7 +29,7 @@ Exceptions
 	:no-show-inheritance:
 
 .. autoexception:: APIWarning()
-	:inherited-members: Exception
+	:inherited-members: UserWarning
 
 Page classes
 ~~~~~~~~~~~~
@@ -50,6 +50,10 @@ Page classes
 .. autoclass:: Category()
 	:inherited-members: Page
 
+.. autoclass:: Revision()
+	:inherited-members:
+	:no-show-inheritance:
+
 User classes
 ~~~~~~~~~~~~
 
@@ -62,10 +66,10 @@ Multi-stream fetches
 ~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: mw_api.genr.Generator()
-	:special-members:
+	:special-members: __or__, __aiter__
 
 .. autoclass:: mw_api.genr.GeneratedGenerator()
-	:special-members:
+	:special-members: __or__, __aiter__
 	:inherited-members: Generic
 
 .. autoclass:: mw_api.genr.PageGenerator()
@@ -80,14 +84,25 @@ Multi-stream fetches
 .. autoclass:: mw_api.genr.TemplateGenerator()
 	:inherited-members: _PageProps
 
+.. autoclass:: mw_api.genr.RevisionGenerator()
+	:inherited-members: _PageProps
+
 .. autoclass:: mw_api.genr.UserGenerator()
 	:inherited-members: Generator
 
 .. autoclass:: mw_api.genr.RecentChangeGenerator()
 	:inherited-members: Generator
 
+.. autoclass:: mw_api.genr.LogEntryGenerator()
+	:inherited-members: Generator
+
+.. autoclass:: mw_api.genr.ImageInfoGenerator()
+	:inherited-members: Generator
+
 .. autoclass:: mw_api.page.Pages()
 	:inherited-members:
+	:special-members: __aiter__, __or__
+	:no-show-inheritance:
 
 Miscellaneous classes
 ~~~~~~~~~~~~~~~~~~~~~
@@ -96,6 +111,12 @@ Miscellaneous classes
 	:no-show-inheritance:
 
 .. autoclass:: RecentChange()
+	:no-show-inheritance:
+
+.. autoclass:: LogEntry()
+	:no-show-inheritance:
+
+.. autoclass:: ImageInfo()
 	:no-show-inheritance:
 
 .. autoclass:: Tag()

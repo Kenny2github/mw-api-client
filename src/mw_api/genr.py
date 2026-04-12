@@ -1,6 +1,7 @@
 from __future__ import annotations
+from datetime import datetime
 from typing import (
-    TYPE_CHECKING, Any, AsyncIterator, Generic, Literal, Never, ParamSpec,
+    TYPE_CHECKING, Any, AsyncIterator, Generic, Literal, LiteralString, Never, ParamSpec, Self,
     TypeVar, TypeVarTuple, Union, overload
 )
 
@@ -16,48 +17,48 @@ R = TypeVar('R')
 class _PageProps:
 
     @overload
-    def links(
+    def links_to(
         self: page.Page, limit: Literal[1], *,
         namespaces: list[Namespace] | None = None,
         pages: list[page.Page] | None = None,
         descending: bool = False,
     ) -> OnePageGenerator: ...
     @overload
-    def links(
+    def links_to(
         self: page.Page, limit: Limit = None, *,
         namespaces: list[Namespace] | None = None,
         pages: list[page.Page] | None = None,
         descending: bool = False,
     ) -> PageGenerator: ...
     @overload
-    def links(
+    def links_to(
         self: page.Pages, limit: Literal[1], *,
         namespaces: list[Namespace] | None = None,
         pages: list[page.Page] | None = None,
         descending: bool = False,
     ) -> OnePageGenerator: ...
     @overload
-    def links(
+    def links_to(
         self: page.Pages, limit: Limit = None, *,
         namespaces: list[Namespace] | None = None,
         pages: list[page.Page] | None = None,
         descending: bool = False,
     ) -> PageGenerator: ...
     @overload
-    def links(
+    def links_to(
         self: OnePageGenerator, limit: Limit = None, *,
         namespaces: list[Namespace] | None = None,
         pages: list[page.Page] | None = None,
         descending: bool = False,
     ) -> GeneratedGenerator[page.Page, page.Page]: ...
     @overload
-    def links(
+    def links_to(
         self: PageGenerator, limit: None = None, *,
         namespaces: list[Namespace] | None = None,
         pages: list[page.Page] | None = None,
         descending: bool = False,
     ) -> GeneratedGenerator[page.Page, page.Page]: ...
-    def links(
+    def links_to(
         self, limit: Limit = None, *,
         namespaces: list[Namespace] | None = None,
         pages: list[page.Page] | None = None,
@@ -387,8 +388,120 @@ class _PageProps:
         """
         raise NotImplementedError
 
+    @overload
+    async def update_info(self: page.Page) -> page.Page: ...
+    @overload
+    async def update_info(self: page.Pages) -> page.Pages: ...
+    @overload
+    async def update_info(self) -> Never: ...
+    async def update_info(self) -> Any:
+        """Fetch all available metadata about the page(s) and cache it, updating
+        the cache if previously fetched. Returns the page(s).
+
+        For existing pages, after calling this method, every :class:`property`
+        of each instance should return data instead of raising :exc:`KeyError`.
+
+        For nonexistent pages, this method is of limited use beyond checking
+        whether it exists yet.
+        """
+        raise NotImplementedError
+
+    @overload
+    async def read(self: page.Page, section: int | None = None) -> str: ...
+    @overload
+    def read(self: page.Pages) -> GeneratedGenerator[page.Page, str]: ...
+    @overload
+    async def read(
+        self: OnePageGenerator, section: int | None = None
+    ) -> str: ...
+    @overload
+    def read(self: PageGenerator) -> GeneratedGenerator[page.Page, str]: ...
+    @overload
+    async def read(self: page.Revision, section: int | None = None) -> str: ...
+    @overload
+    async def read(
+        self: OneRevisionGenerator, section: int | None = None
+    ) -> str: ...
+    @overload
+    def read(
+        self: RevisionGenerator, section: int | None = None
+    ) -> GeneratedGenerator[page.Revision, str]: ...
+    def read(self, section: int | None = None) -> Any:
+        """Read the content of the ``main`` revision slot.
+
+        Parameters:
+            section: Only read the content of the ``section``-th section
+                (where 0 is the top, title-less section).
+
+        Returns:
+            Page or section content.
+
+        Raises:
+            APIError: If reading failed.
+        """
+        raise NotImplementedError
+
+    @overload
+    async def last_revision(self: page.Page) -> page.Revision: ...
+    @overload
+    def last_revision(self: page.Pages) -> RevisionGenerator: ...
+    @overload
+    async def last_revision(self: OnePageGenerator) -> page.Revision: ...
+    @overload
+    def last_revision(
+        self: PageGenerator
+    ) -> GeneratedGenerator[page.Page, page.Revision]: ...
+    def last_revision(self) -> Any:
+        """Fetch the most recent revision to these pages."""
+        raise NotImplementedError
+
 class _PageLists:
-    pass
+
+    @overload
+    def revisions(
+        self: page.Page, limit: Literal[1], *,
+        start: datetime | page.Revision | None = None,
+        end: datetime | page.Revision | None = None,
+        oldest_first: bool = False,
+        user: user.User | None = None,
+        exclude_user: user.User | None = None,
+        tag: misc.Tag | None = None,
+    ) -> OneRevisionGenerator: ...
+    @overload
+    def revisions(
+        self: page.Page, limit: Limit = None, *,
+        start: datetime | page.Revision | None = None,
+        end: datetime | page.Revision | None = None,
+        oldest_first: bool = False,
+        user: user.User | None = None,
+        exclude_user: user.User | None = None,
+        tag: misc.Tag | None = None,
+    ) -> RevisionGenerator: ...
+    def revisions(
+        self, limit: Limit = None, *,
+        start: datetime | page.Revision | None = None,
+        end: datetime | page.Revision | None = None,
+        oldest_first: bool = False,
+        user: user.User | None = None,
+        exclude_user: user.User | None = None,
+        tag: misc.Tag | None = None,
+    ) -> Any: # page.Page! -> page.Revision
+        """Fetch revisions of this page. (Mode #2 as documented_.)
+
+        Parameters:
+            start: The timestamp or revision to start enumerating from.
+            end: The timestamp or revision to end enumerating.
+            oldest_first: If :const:`True`, list oldest first instead of
+                newest first.
+            user: Only list revisions by this user.
+            exclude_user: Don't list revisions by this user.
+            tag: Only list revisions with this tag.
+
+        Yields:
+            If iterated with ``async for``, each revision of this page.
+
+        .. _documented: https://www.mediawiki.org/wiki/Special:ApiHelp/query%2Brevisions
+        """
 
 class _CategoryProps(_PageProps):
     pass
@@ -432,7 +545,66 @@ class _CategoryLists(_PageLists):
         raise NotImplementedError
 
 class _FileProps(_PageProps):
-    pass
+
+    @overload
+    def reuploads(
+        self: page.File, limit: Limit = None, *,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        url_width: int | None = None,
+        url_height: int | None = None,
+        url_param: str | None = None,
+        local_only: bool = False,
+    ) -> ImageInfoGenerator: ...
+    @overload
+    def reuploads(
+        self: page.Files, limit: Limit = None, *,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        url_width: int | None = None,
+        url_height: int | None = None,
+        url_param: str | None = None,
+        local_only: bool = False,
+    ) -> ImageInfoGenerator: ...
+    @overload
+    def reuploads(
+        self: FileGenerator, limit: Limit = None, *,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        url_width: int | None = None,
+        url_height: int | None = None,
+        url_param: str | None = None,
+        local_only: bool = False,
+    ) -> GeneratedGenerator[page.File, misc.ImageInfo]: ...
+    def reuploads(
+        self, limit: Limit = None, *,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        url_width: int | None = None,
+        url_height: int | None = None,
+        url_param: str | None = None,
+        local_only: bool = False,
+    ) -> Any:
+        """Fetch file revisions to this file.
+
+        Parameters:
+            limit: |see-limit| NOTE: contrary to that attribute's description,
+                this particular API method *does* obey multiple limits
+                separately (i.e. the first N revisions per file to the first M
+                files, instead of the first N total revisions).
+            start: Timetstamp to start listing from.
+            end: Timestamp to stop listing at.
+            url_width: The URL property links to a thumbnail scaled to this
+                width, rounded up to the nearest available width.
+            url_height: Similar to ``url_width``.
+            url_param: Arbitrary filetype-specific data to pass into the URL.
+            local_only: If :const:`True`, look only for files in the local
+                repository (no foreign file repositories).
+
+        Yields:
+            If iterated with ``async for``, each file revision.
+        """
+        raise NotImplementedError
 
 class _FileLists(_PageLists):
     pass
@@ -512,7 +684,11 @@ class _UserProps:
 class _UserLists:
     pass
 
-Generatable = Union['page.Page', 'user.User', 'misc.RecentChange']
+Generatable = Union[
+    'page.Page', 'page.Revision', 'user.User',
+    'misc.RecentChange', 'misc.LogEntry', 'misc.ImageInfo',
+    str,
+]
 GenT = TypeVar('GenT', covariant=True, bound=Generatable)
 GenGenT = TypeVar('GenGenT', covariant=True, bound=Generatable)
 GenTs = TypeVarTuple('GenTs')
@@ -530,7 +706,7 @@ class Generator(Generic[GenT, *GenTs]):
     2. First-order multi-generator: multiple streams of results based on one or
        more sources that were not themselves generated, formed by ``|``-ing
        together multiple first-order mono-generators. These are hinted with
-       (e.g.) ``Generator[Page, Category]`` for :meth:`mw_api.Page.links()`
+       (e.g.) ``Generator[Page, Category]`` for :meth:`mw_api.Page.links_to()`
        ``|`` :meth:`mw_api.Page.categories()`.
     3. Second-order mono-generator: a single stream of results based on a
        previous first-order generator, e.g. :meth:`PageGenerator.categories()`.
@@ -539,7 +715,8 @@ class Generator(Generic[GenT, *GenTs]):
        same first-order mono-generator, formed by ``|``-ing together multiple
        second-order mono-generators **from the same first-order source**. These
        are hinted with (e.g.) ``GeneratedGenerator[Page, Category, Page]`` for
-       :meth:`PageGenerator.categories()` ``|`` :meth:`PageGenerator.links()`.
+       :meth:`PageGenerator.categories()`
+       ``|`` :meth:`PageGenerator.links_to()`.
 
     First- and second-order mono-generators can be :meth:`__aiter__()`'d to
     dynamically fetch results until reaching the :attr:`limit`, or
@@ -588,7 +765,7 @@ class Generator(Generic[GenT, *GenTs]):
         """
         raise NotImplementedError
 
-    async def fetchall(self) -> dict[GenT, dict[str, Any]]:
+    async def fetchall(self) -> dict[GenT, dict[LiteralString, Any]]:
         """Fetch all results now, making whatever requests necessary.
         This is the only supported way to get your data for multi-generators.
         """
@@ -641,6 +818,15 @@ class TemplateGenerator(_TemplateProps, Generator['page.Template']):
 class OneTemplateGenerator(TemplateGenerator):
     pass
 
+class RevisionGenerator(_PageProps, Generator['page.Revision']):
+    """First-order mono-generator of :class:`~mw_api.page.Revision` instances.
+    |noinit| Includes :class:`PageGenerator` methods because almost all API
+    methods convert revision IDs to their associated page IDs.
+    """
+
+class OneRevisionGenerator(RevisionGenerator):
+    pass
+
 class UserGenerator(Generator['user.User']):
     """First-order mono-generator of :class:`~mw_api.user.User` instances.
     |noinit|
@@ -653,4 +839,14 @@ class RecentChangeGenerator(Generator['misc.RecentChange']):
     """First-order mono-generator of :class:`misc.RecentChange` instances.
     |noinit| Has no methods (the ``recentchanges`` generator can only generate
     page titles or revision IDs).
+    """
+
+class LogEntryGenerator(Generator['misc.LogEntry']):
+    """First-order mono-generator of :class:`misc.LogEntry` instances.
+    |noinit| Has no methods (the ``logevents`` list is not a generator).
+    """
+
+class ImageInfoGenerator(Generator['misc.ImageInfo']):
+    """First-order mono-generator of :class:`misc.ImageInfo` instances.
+    |noinit| Has no methods (the ``imageinfo`` prop is not a generator).
     """

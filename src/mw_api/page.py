@@ -1,9 +1,11 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Self
+from datetime import datetime
+import io
+from typing import TYPE_CHECKING, AsyncGenerator, Generic, Literal, Self, TypeVar, overload
 
 from . import genr
 if TYPE_CHECKING:
-    from .misc import Namespace
+    from .misc import Namespace, Tag
 
 class Page(genr._PageProps, genr._PageLists):
     """
@@ -24,22 +26,6 @@ class Page(genr._PageProps, genr._PageLists):
         """|noinit| Use :meth:`Wiki.page`."""
         raise NotImplementedError
 
-    async def update_info(self) -> None:
-        """Fetch all available metadata about the page and cache it, updating
-        the cache if previously fetched.
-
-        If the page exists, after calling this method, every :class:`property`
-        of this instance should return data instead of raising :exc:`KeyError`.
-
-        If the page does not exist, this method is of limited use beyond
-        checking whether it exists yet.
-        """
-        raise NotImplementedError
-
-    async def read(self) -> str:
-        """Read the contents of the ``main`` revision slot."""
-        raise NotImplementedError
-
     async def edit(
         self, content: str, summary: str, *,
         section: int | None = None,
@@ -47,6 +33,7 @@ class Page(genr._PageProps, genr._PageLists):
         bot: bool = True,
         ignore_conflicts: bool = False,
         create: bool | None = False,
+        tags: list[Tag] | None = None,
     ) -> None:
         """Edit the page.
 
@@ -64,6 +51,7 @@ class Page(genr._PageProps, genr._PageLists):
             create: If :data:`True`, *don't* edit an existing page. If
                 :data:`False`, *only* edit an existing page. If :data:`None`,
                 the edit is agnostic of whether the page exists.
+            tags: Manually apply these recent change tags to the edit.
 
         Raises:
             APIError: If editing failed.
@@ -97,6 +85,13 @@ class Page(genr._PageProps, genr._PageLists):
         """The namespace to which this page belongs."""
         raise NotImplementedError
 
+    @property
+    def missing(self) -> bool:
+        """If :const:`True`, the page does not exist
+        and most methods/properties will fail.
+        """
+        raise NotImplementedError
+
     def as_talk(self) -> TalkPage:
         """Get the same page as if it was a talk page.
         Useful for pages with ``__NEWSECTIONLINK__``.
@@ -109,7 +104,15 @@ class Page(genr._PageProps, genr._PageLists):
         """
         raise NotImplementedError
 
-    def __or__(self, other: Page) -> Pages:
+    @overload
+    def __or__(self: Category, other: Category) -> Categories: ...
+    @overload
+    def __or__(self: File, other: File) -> Files: ...
+    @overload
+    def __or__(self: Template, other: Template) -> Templates: ...
+    @overload
+    def __or__(self: Page, other: Page) -> Pages: ...
+    def __or__(self, other: T) -> Pages | _Pages[T]:
         """Combine this page with another for a multi-page fetch."""
         raise NotImplementedError
 
@@ -129,6 +132,7 @@ class TalkPage(Page):
         self, title: str, content: str, *,
         minor: bool | None = None,
         bot: bool = True,
+        summary: str | None = None
     ) -> None:
         """Create a new section on the talk page.
 
@@ -137,6 +141,7 @@ class TalkPage(Page):
             content: Text of the new section. Remember to include a signature.
             minor: See :meth:`Page.edit()`
             bot: See :meth:`Page.edit()`
+            summary: Edit summary (generated from ``title`` if omitted)
 
         Raises:
             APIError: If editing failed.
@@ -149,11 +154,42 @@ class File(genr._FileProps, genr._FileLists, Page):
         """|noinit| Use :meth:`Wiki.file`."""
         raise NotImplementedError
 
+    async def upload(
+        self, file: io.IOBase | str, summary: str, *,
+        tags: list[Tag] | None = None,
+        text: str | None = None,
+        ignore_warnings: bool = False,
+    ) -> None:
+        """Upload a new file or file version.
+
+        Parameters:
+            file: Either a file object with the contents to upload, or an URL
+                to the file to upload.
+            summary: Upload comment; also initial File: page content if
+                ``text`` is :const:`None`.
+            tags: Manually apply these recent change tags to the upload.
+            text: Initial File: page content for a new upload.
+            ignore_warnings: If :const:`True`, ignore any upload warnings.
+        """
+        raise NotImplementedError
+
+    @property
+    def repository(self) -> Literal['local'] | str:
+        """Repository on which this image is stored (if applicable)."""
+        raise NotImplementedError
+
 class Template(genr._TemplateProps, genr._TemplateLists, Page):
 
     def __init__(self) -> None:
         """|noinit| Use :meth:`Wiki.template` or :meth:`Page.as_template`."""
         raise NotImplementedError
+
+    def transclude(self, *args: str, **kwargs: str) -> str:
+        title = self.title.removeprefix(
+            self.wiki.namespace('Template').name + ':')
+        positional = ''.join('|' + arg for arg in args)
+        keyword = ''.join(f'|{key}={value}' for key, value in kwargs)
+        return '{{%s%s%s}}' % (title, positional, keyword)
 
 class Category(genr._CategoryProps, genr._CategoryLists, Page):
 
@@ -161,17 +197,117 @@ class Category(genr._CategoryProps, genr._CategoryLists, Page):
         """|noinit| Use :meth:`Wiki.category`."""
         raise NotImplementedError
 
-class Pages(genr._PageProps):
+T = TypeVar('T', bound=Page)
+
+class _Pages(Generic[T]):
+    def __aiter__(self) -> AsyncGenerator[T, None]:
+        """Generate just the pages in this set."""
+        raise NotImplementedError
+
+    def __or__(self, other: T | Self) -> Self:
+        """Add more pages to this set."""
+        raise NotImplementedError
+
+class Pages(_Pages[Page], genr._PageProps):
     """The result of combining more than one :class:`Page`."""
 
-class Categories(genr._CategoryProps):
+class Categories(_Pages[Category], genr._CategoryProps):
     """The result of combining more than one :class:`Category`."""
 
-class Files(genr._FileProps):
+class Files(_Pages[File], genr._FileProps):
     """The result of combining more than one :class:`File`."""
 
-class Templates(genr._TemplateProps):
+class Templates(_Pages[Template], genr._TemplateProps):
     """The result of combining more than one :class:`Template`."""
+
+class Revision:
+    """
+    A handle on a wiki page revision, uniquely identified by its :attr:`id`.
+    There is only one :class:`Revision` instance per :class:`Wiki` per ID.
+
+    The :attr:`id` |key-attr| |population| :meth:`update_info`.
+
+    Attributes:
+        id: The revision ID.
+    """
+
+    id: int
+    wiki: Wiki
+
+    def __init__(self) -> None:
+        """|noinit|"""
+        raise NotImplementedError
+
+    async def update_info(self) -> None:
+        """Fetch all available metadata about the revision and cache it,
+        updating the cache if previously fetched.
+
+        After calling this method, every :class:`property` of this instance
+        should return data instead of raising :exc:`KeyError`.
+
+        Raises:
+            APIError: If fetching data failed (e.g. because the revision does
+                not exist)
+        """
+        raise NotImplementedError
+
+    async def patrol(self) -> bool:
+        """Patrol the recent change corresponding to this revision.
+
+        This is an expensive call. It requires first looking up the recent
+        change corresponding to this revision, then patrolling it if it is
+        unpatrolled. The corresponding MediaWiki diff functionality really
+        does do this too, but it has the advantage of direct database access.
+
+        Returns:
+            :const:`True` if the revision was patrolled, or :const:`False`
+            if it was already patrolled.
+
+        Raises:
+            APIError: If fetching data failed (e.g. because the revision does
+                not exist) or patrolling failed.
+        """
+        raise NotImplementedError
+
+    @property
+    def page(self) -> Page:
+        """The page this revision was made to."""
+        raise NotImplementedError
+
+    @property
+    def parent(self) -> Revision | None:
+        """The revision preceding this one, if there is one."""
+        raise NotImplementedError
+
+    @property
+    def minor(self) -> bool:
+        """Whether this revision was a minor edit."""
+        raise NotImplementedError
+
+    @property
+    def user(self) -> user.User:
+        """The user that made this revision."""
+        raise NotImplementedError
+
+    @property
+    def timestamp(self) -> datetime:
+        """The timestamp when this revision was made."""
+        raise NotImplementedError
+
+    @property
+    def size(self) -> int:
+        """The size of the page content at this revision."""
+        raise NotImplementedError
+
+    @property
+    def comment(self) -> str:
+        """The edit summary for this revision."""
+        raise NotImplementedError
+
+    @property
+    def tags(self) -> list[Tag]:
+        """The recent change tags associated with this edit."""
+        raise NotImplementedError
 
 from .wiki import Wiki
 from . import user

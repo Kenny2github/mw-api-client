@@ -1,6 +1,6 @@
 from __future__ import annotations
 from datetime import datetime
-from typing import Literal, Self
+from typing import Literal, LiteralString, Self
 
 class Wiki:
     """
@@ -95,6 +95,10 @@ class Wiki:
         """
         raise NotImplementedError
 
+    def file_cast(self, title: str) -> File:
+        """Same as :meth:`file` but adds namespace instead of raising."""
+        raise NotImplementedError
+
     def template(self, title: str) -> Template:
         """Get a handle on a wiki template page.
 
@@ -109,6 +113,10 @@ class Wiki:
         """
         raise NotImplementedError
 
+    def template_cast(self, title: str) -> Template:
+        """Same as :meth:`template` but adds namespace instead of raising."""
+        raise NotImplementedError
+
     def category(self, title: str) -> Category:
         """Get a handle on a wiki category page.
 
@@ -121,6 +129,10 @@ class Wiki:
         Raises:
             ValueError: If ``title`` is not the title of a category.
         """
+        raise NotImplementedError
+
+    def category_cast(self, title: str) -> Category:
+        """Same as :meth:`category` but adds namespace instead of raising."""
         raise NotImplementedError
 
     def user(self, name: str) -> User:
@@ -165,6 +177,7 @@ class Wiki:
         """Fetch recent changes.
 
         Parameters:
+            limit: |see-limit|
             start: The timestamp to start enumerating from.
             end: The timestamp to end enumerating.
             oldest_first: If :const:`True`, list oldest first instead of
@@ -200,13 +213,15 @@ class Wiki:
         tag: Tag | None = None,
         show: list[Literal['!anon', '!autopatrolled', '!bot', '!minor', '!patrolled', '!redirect', 'anon', 'autopatrolled', 'bot', 'minor', 'patrolled', 'redirect', 'unpatrolled']] | None = None,
         types: list[Literal['categorize', 'edit', 'external', 'log', 'new']] | None = None,
-        top_only: bool = False,
     ) -> genr.PageGenerator:
         """Fetch recently changed pages. As it would be pointless to fetch
         recently changed pages and filter to a known page, the ``page``
-        parameter is not supported for this method.
+        parameter is not supported for this method. Additionally, as it would
+        be pointless to generate the same page multiple times, the ``top_only``
+        parameter is forced to :const:`True`.
 
         Parameters:
+            limit: |see-limit|
             start: The timestamp to start enumerating from.
             end: The timestamp to end enumerating.
             oldest_first: If :const:`True`, list oldest first instead of
@@ -223,10 +238,110 @@ class Wiki:
             types: Only show changes that are page edits [edit], log entries
                 [log], categorizations [categorize], page creations [new], or
                 external changes [external].
-            top_only: Only show most recent edits to pages.
 
         Yields:
             If iterated with ``async for``, each recently changed page.
+        """
+        raise NotImplementedError
+
+    def random_pages(
+        self, limit: Limit = None, *,
+        namespaces: list[Namespace] | None = None,
+        redirects: bool | None = False,
+        min_size: int | None = None,
+        max_size: int | None = None,
+        content_model: str | None = None,
+    ) -> genr.PageGenerator:
+        """Fetch random pages.
+
+        Parameters:
+            limit: |see-limit|
+            namespaces: Only generate pages in these namespaces.
+            redirects: If :const:`True`, only generate random redirects.
+                If :const:`False` (the default), only generate random
+                non-redirects. Otherwise, generate all pages.
+            min_size: Only generate pages of at least this size in bytes.
+            max_size: Only generate pages of at most this size in bytes.
+            content_model: Only generate pages with this `content model`_.
+
+        Yields:
+            If iterated with ``async for``, randomly generated pages.
+
+        .. _content model: https://www.mediawiki.org/wiki/Content_model
+        """
+        raise NotImplementedError
+
+    def log_events(
+        self, limit: Limit = None, *,
+        type: LiteralString | None = None,
+        action: str | None = None,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        oldest_first: bool = False,
+        user: User | None = None,
+        page: Page | None = None,
+        namespaces: list[Namespace] | None = None,
+        prefix: str | None = None,
+        tag: Tag | None = None,
+    ) -> genr.LogEntryGenerator:
+        """Fetch log events.
+
+        Parameters:
+            limit: |see-limit|
+            type: Filter log entries to only this type. Available types depend
+                on the wiki's configuration.
+            action: Filter log actions to only this action, overriding ``type``
+                if specified. Available actions depend on configuration.
+            start: The timestamp to start enumerating from.
+            end: The timestamp to end enumerating.
+            oldest_first: If :const:`True`, list oldest first instead of
+                newest first.
+            user: Only list log entries by this user.
+            page: Only show log entries targeting this page.
+            namespaces: Only show log entries in these namespaces.
+            prefix: Filter entries that start with this prefix.
+            tag: Only list log entries with this tag.
+
+        Yields:
+            If iterated with ``async for``, each log entry.
+        """
+        raise NotImplementedError
+
+    ##### "All" lists #####
+
+    def all_users(
+        self, limit: Limit = None, *,
+        from_: str | None = None,
+        to: str | None = None,
+        prefix: str | None = None,
+        descending: bool = False,
+        group: list[str] | None = None,
+        exclude_group: list[str] | None = None,
+        rights: list[str] | None = None,
+        edited_only: bool = False,
+        active_only: bool = False,
+        exclude_named: bool = False,
+        exclude_temp: bool = False,
+    ) -> genr.UserGenerator:
+        """Generate all users on this wiki.
+
+        Parameters:
+            limit: |see-limit|
+            from_: The string to start enumerating usernames from.
+            to: The string to stop enumerating usernames at.
+            prefix: Search for all users that begin with this value.
+            descending: If :const:`True`, list in descending order instead
+                of ascending.
+            group: Only include users explicitly given these groups.
+            exclude_group: Exclude users explicitly given these groups.
+            rights: Only include users explicitly given these rights.
+            edited_only: If :const:`True`, only list users who have made edits.
+            active_only: If :const:`True`, only list Special:ActiveUsers.
+            exclude_named: If :const:`True`, exclude users of named accounts.
+            exclude_temp: if :const:`True`, exclude users of temp accounts.
+
+        Yields:
+            If iterated with ``async for``, each existing user.
         """
         raise NotImplementedError
 

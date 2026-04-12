@@ -79,13 +79,13 @@ async def generators_demo(wiki: mw.Wiki) -> None:
     # returned by the API; when a limit-continue point is reached, that
     # iteration of the Python loop will perform the necessary request.
     #   `limit=None` means keep looping until we go through all available
-    # results for `links()`. You can instead pass an integer to fetch that many
-    # results, or pass the literal string 'max' for the maximum number the API
-    # will allow you to fetch in one request. No limit can be passed to
+    # results for `links_to()`. You can instead pass an integer to fetch that
+    # many results, or pass the literal string 'max' for the maximum number the
+    # API will allow you to fetch in one request. No limit can be passed to
     # categories() due to the nature of the API's limit-continue system; all
     # available results will always be fetched. The exception is if the limit
     # for the generator is 1.
-    async for linked_page, category in page1.links(limit=None).categories():
+    async for linked_page, category in page1.links_to(limit=None).categories():
         print(page1, 'links to', linked_page, 'which is in category', category.title)
 
     #   Fetch both contributors to, and templates used in, the first 5 pages
