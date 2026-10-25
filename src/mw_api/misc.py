@@ -292,44 +292,44 @@ class ImageInfo:
         raise NotImplementedError
 
     async def update_info(self) -> None:
-        """Fetch all available metadata about the log entry and cache it,
+        """Fetch all available metadata about the file revision and cache it,
         updating the cache if previously fetched.
 
         After calling this method, every :class:`property` of this instance
         should return data instead of raising :exc:`KeyError`.
 
         Raises:
-            APIError: If fetching data failed (e.g. because the log entry does
+            APIError: If fetching data failed (e.g. because the revision does
                 not exist)
         """
         raise NotImplementedError
 
     async def patrol(self) -> bool:
-        """Patrol the recent change corresponding to this log entry.
+        """Patrol the recent change corresponding to this file revision.
 
         This is an expensive call. It requires first looking up the recent
-        change corresponding to this log entry, then patrolling it if it is
+        change corresponding to this revision, then patrolling it if it is
         unpatrolled. The corresponding MediaWiki diff functionality really
         does do this too, but it has the advantage of direct database access.
 
         Returns:
-            :const:`True` if the log entry was patrolled, or :const:`False`
+            :const:`True` if the revision was patrolled, or :const:`False`
             if it was already patrolled.
 
         Raises:
-            APIError: If fetching data failed (e.g. because the log entry does
+            APIError: If fetching data failed (e.g. because the revision does
                 not exist) or patrolling failed.
         """
         raise NotImplementedError
 
     @property
     def user(self) -> User:
-        """The user responsible for this log entry."""
+        """The user responsible for this file revision."""
         raise NotImplementedError
 
     @property
     def comment(self) -> str:
-        """The action summary for this log entry."""
+        """The action summary for this file revision."""
         raise NotImplementedError
 
     @property
