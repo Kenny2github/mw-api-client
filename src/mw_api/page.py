@@ -1,6 +1,6 @@
 from __future__ import annotations
 from datetime import datetime
-import io
+import io, os
 from typing import TYPE_CHECKING, AsyncGenerator, Generic, Literal, Self, TypeVar, overload
 
 from . import genr
@@ -155,7 +155,8 @@ class File(genr._FileProps, genr._FileLists, Page):
         raise NotImplementedError
 
     async def upload(
-        self, file: io.IOBase | str, summary: str, *,
+        self, file: io.IOBase | os.PathLike | str,
+        summary: str, *,
         tags: list[Tag] | None = None,
         text: str | None = None,
         ignore_warnings: bool = False,
